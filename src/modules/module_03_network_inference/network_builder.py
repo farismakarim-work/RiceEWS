@@ -138,6 +138,119 @@ def _build_node_metrics(nodes: List[str], edges: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def _save_html_visualization(grade: str, nodes: List[str], edge_df: pd.DataFrame, out_dir: Path) -> Path:
+    html_path = out_dir / f"network_graph_{grade}.html"
+
+    try:
+        import plotly.graph_objects as go
+
+        if not nodes:
+            fig = go.Figure()
+            fig.update_layout(
+                title=f"Module 3 Network Graph - {grade} (No Significant Edges)",
+                template="plotly_white",
+            )
+            fig.write_html(str(html_path), include_plotlyjs="cdn")
+            return html_path
+
+        n = len(nodes)
+        angles = np.linspace(0, 2 * np.pi, n, endpoint=False)
+        pos = {
+            node: (float(np.cos(angles[i])), float(np.sin(angles[i])))
+            for i, node in enumerate(nodes)
+        }
+
+        edge_x: List[float] = []
+        edge_y: List[float] = []
+        for _, row in edge_df.iterrows():
+            x0, y0 = pos[row["source"]]
+            x1, y1 = pos[row["target"]]
+            edge_x += [x0, x1, None]
+            edge_y += [y0, y1, None]
+
+        edge_trace = go.Scatter(
+            x=edge_x,
+            y=edge_y,
+            line=dict(width=1, color="#888"),
+            hoverinfo="none",
+            mode="lines",
+            name="edges",
+        )
+
+        node_x = [pos[node][0] for node in nodes]
+        node_y = [pos[node][1] for node in nodes]
+
+        out_degree = edge_df.groupby("source").size().to_dict() if not edge_df.empty else {}
+        in_degree = edge_df.groupby("target").size().to_dict() if not edge_df.empty else {}
+        labels = [
+            f"{node}<br>Out-degree: {int(out_degree.get(node, 0))}<br>In-degree: {int(in_degree.get(node, 0))}"
+            for node in nodes
+        ]
+
+        node_trace = go.Scatter(
+            x=node_x,
+            y=node_y,
+            mode="markers+text",
+            text=nodes,
+            textposition="top center",
+            hovertext=labels,
+            hoverinfo="text",
+            marker=dict(size=20, color="#1f77b4", line=dict(width=1, color="#0d3b66")),
+            name="markets",
+        )
+
+        fig = go.Figure(data=[edge_trace, node_trace])
+        fig.update_layout(
+            title=f"Module 3 Network Graph - {grade} (Significant Edges)",
+            showlegend=False,
+            template="plotly_white",
+            xaxis=dict(showgrid=False, zeroline=False, visible=False),
+            yaxis=dict(showgrid=False, zeroline=False, visible=False),
+        )
+        fig.write_html(str(html_path), include_plotlyjs="cdn")
+        return html_path
+
+    except Exception:
+        # Fallback minimal HTML, tetap memenuhi syarat minimal satu output visualisasi
+        nodes_html = "".join([f"<li>{n}</li>" for n in nodes]) or "<li>(no nodes)</li>"
+        edges_html = ""
+        if edge_df.empty:
+            edges_html = "<li>(no significant edges)</li>"
+        else:
+            edges_html = "".join(
+                [
+                    f"<li>{row['source']} → {row['target']} (F={row['f_statistic']:.4f}, p={row['p_value']:.4f})</li>"
+                    for _, row in edge_df.iterrows()
+                ]
+            )
+
+        html = f"""<!doctype html>
+<html lang=\"en\">
+<head>
+  <meta charset=\"utf-8\" />
+  <title>Module 3 Network Graph - {grade}</title>
+  <style>
+    body {{ font-family: Arial, sans-serif; margin: 24px; }}
+    h1 {{ margin-bottom: 8px; }}
+    .muted {{ color: #666; }}
+  </style>
+</head>
+<body>
+  <h1>Module 3 Network Graph - {grade}</h1>
+  <p class=\"muted\">Fallback HTML visualization summary (plotly unavailable).</p>
+
+  <h2>Nodes</h2>
+  <ul>{nodes_html}</ul>
+
+  <h2>Significant Directed Edges</h2>
+  <ul>{edges_html}</ul>
+</body>
+</html>
+"""
+        html_path.write_text(html, encoding="utf-8")
+        return html_path
+
+
 def run_module3_network_inference(
     granger_json_path: str,
     output_dir: str,
@@ -164,6 +277,7 @@ def run_module3_network_inference(
     all_edges = []
     leaders_per_grade: Dict[str, List[Dict]] = {}
     summary_rows = []
+    visualization_paths: Dict[str, str] = {}
 
     for grade in grades:
         grade_data = data.get(grade, {})
@@ -193,6 +307,8 @@ def run_module3_network_inference(
         )
 
         metrics.to_csv(out_dir / f"market_leaders_{grade}.csv", index=False)
+        viz_path = _save_html_visualization(grade=grade, nodes=nodes, edge_df=edge_df, out_dir=out_dir)
+        visualization_paths[grade] = str(viz_path)
 
     edges_df = pd.concat(all_edges, ignore_index=True) if all_edges else pd.DataFrame(
         columns=["grade", "source", "target", "f_statistic", "p_value", "weight"]
@@ -209,6 +325,7 @@ def run_module3_network_inference(
         "grades": grades,
         "summary": summary_rows,
         "leaders_per_grade": leaders_per_grade,
+        "visualizations": visualization_paths,
     }
 
     with (out_dir / "network_inference_results.json").open("w", encoding="utf-8") as f:
@@ -222,12 +339,13 @@ def run_module3_network_inference(
         "",
         "## Per Grade Summary",
         "",
-        "| Grade | Nodes | Edges | DAG | Polytree | Top Leader | Leader Score |",
-        "|---|---:|---:|:---:|:---:|---|---:|",
+        "| Grade | Nodes | Edges | DAG | Polytree | Top Leader | Leader Score | Visualization |",
+        "|---|---:|---:|:---:|:---:|---|---:|---|",
     ]
     for r in summary_rows:
+        viz_name = Path(visualization_paths.get(r["grade"], "")).name if visualization_paths.get(r["grade"]) else "-"
         md_lines.append(
-            f"| {r['grade']} | {r['nodes']} | {r['edges']} | {r['is_dag']} | {r['is_polytree']} | {r['top_leader']} | {r['top_leader_score']:.4f} |"
+            f"| {r['grade']} | {r['nodes']} | {r['edges']} | {r['is_dag']} | {r['is_polytree']} | {r['top_leader']} | {r['top_leader_score']:.4f} | {viz_name} |"
         )
 
     (out_dir / "network_summary.md").write_text("\n".join(md_lines), encoding="utf-8")
