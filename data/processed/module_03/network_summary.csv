@@ -1,0 +1,5 @@
+grade,nodes,edges,is_dag,is_polytree,top_leader,top_leader_score
+low1,6,30,False,False,M106,189.08817355495506
+low2,6,30,False,False,M106,238.67980911260952
+med1,6,30,False,False,M102,54.45271160769059
+med2,6,30,False,False,M102,39.80325617602797
