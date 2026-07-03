@@ -1,0 +1,205 @@
+{
+  "module": "module_03_network_inference",
+  "input": "/home/runner/work/RiceEWS/RiceEWS/data/processed/granger_results.json",
+  "output_dir": "/home/runner/work/RiceEWS/RiceEWS/data/processed/module_03",
+  "grades": [
+    "low1",
+    "low2",
+    "med1",
+    "med2"
+  ],
+  "summary": [
+    {
+      "grade": "low1",
+      "nodes": 6,
+      "edges": 30,
+      "is_dag": false,
+      "is_polytree": false,
+      "top_leader": "M106",
+      "top_leader_score": 189.08817355495395
+    },
+    {
+      "grade": "low2",
+      "nodes": 6,
+      "edges": 30,
+      "is_dag": false,
+      "is_polytree": false,
+      "top_leader": "M106",
+      "top_leader_score": 238.67980911260514
+    },
+    {
+      "grade": "med1",
+      "nodes": 6,
+      "edges": 30,
+      "is_dag": false,
+      "is_polytree": false,
+      "top_leader": "M102",
+      "top_leader_score": 54.45271160769044
+    },
+    {
+      "grade": "med2",
+      "nodes": 6,
+      "edges": 30,
+      "is_dag": false,
+      "is_polytree": false,
+      "top_leader": "M102",
+      "top_leader_score": 39.8032561760288
+    }
+  ],
+  "leaders_per_grade": {
+    "low1": [
+      {
+        "node": "M106",
+        "out_degree": 5,
+        "in_degree": 5,
+        "weighted_out_degree": 189.08817355495395,
+        "leader_score": 189.08817355495395
+      },
+      {
+        "node": "M103",
+        "out_degree": 5,
+        "in_degree": 5,
+        "weighted_out_degree": 122.08313197522595,
+        "leader_score": 122.08313197522595
+      },
+      {
+        "node": "M105",
+        "out_degree": 5,
+        "in_degree": 5,
+        "weighted_out_degree": 64.20016913591432,
+        "leader_score": 64.20016913591432
+      },
+      {
+        "node": "M104",
+        "out_degree": 5,
+        "in_degree": 5,
+        "weighted_out_degree": 27.77903414496563,
+        "leader_score": 27.779034144965635
+      },
+      {
+        "node": "M102",
+        "out_degree": 5,
+        "in_degree": 5,
+        "weighted_out_degree": 10.279825979715344,
+        "leader_score": 10.279825979715344
+      }
+    ],
+    "low2": [
+      {
+        "node": "M106",
+        "out_degree": 5,
+        "in_degree": 5,
+        "weighted_out_degree": 238.67980911260514,
+        "leader_score": 238.67980911260514
+      },
+      {
+        "node": "M103",
+        "out_degree": 5,
+        "in_degree": 5,
+        "weighted_out_degree": 79.27109156874253,
+        "leader_score": 79.27109156874253
+      },
+      {
+        "node": "M105",
+        "out_degree": 5,
+        "in_degree": 5,
+        "weighted_out_degree": 36.00174157340372,
+        "leader_score": 36.00174157340372
+      },
+      {
+        "node": "M101",
+        "out_degree": 5,
+        "in_degree": 5,
+        "weighted_out_degree": 29.30772597730615,
+        "leader_score": 29.30772597730615
+      },
+      {
+        "node": "M104",
+        "out_degree": 5,
+        "in_degree": 5,
+        "weighted_out_degree": 22.614935061268014,
+        "leader_score": 22.614935061268014
+      }
+    ],
+    "med1": [
+      {
+        "node": "M102",
+        "out_degree": 5,
+        "in_degree": 5,
+        "weighted_out_degree": 54.45271160769044,
+        "leader_score": 54.45271160769044
+      },
+      {
+        "node": "M103",
+        "out_degree": 5,
+        "in_degree": 5,
+        "weighted_out_degree": 38.514208224537015,
+        "leader_score": 38.514208224537015
+      },
+      {
+        "node": "M101",
+        "out_degree": 5,
+        "in_degree": 5,
+        "weighted_out_degree": 29.47153941013202,
+        "leader_score": 29.471539410132024
+      },
+      {
+        "node": "M104",
+        "out_degree": 5,
+        "in_degree": 5,
+        "weighted_out_degree": 28.331709232115845,
+        "leader_score": 28.33170923211584
+      },
+      {
+        "node": "M106",
+        "out_degree": 5,
+        "in_degree": 5,
+        "weighted_out_degree": 18.988208890106193,
+        "leader_score": 18.988208890106193
+      }
+    ],
+    "med2": [
+      {
+        "node": "M102",
+        "out_degree": 5,
+        "in_degree": 5,
+        "weighted_out_degree": 39.8032561760288,
+        "leader_score": 39.8032561760288
+      },
+      {
+        "node": "M103",
+        "out_degree": 5,
+        "in_degree": 5,
+        "weighted_out_degree": 37.52773692676133,
+        "leader_score": 37.52773692676133
+      },
+      {
+        "node": "M106",
+        "out_degree": 5,
+        "in_degree": 5,
+        "weighted_out_degree": 18.132468790498095,
+        "leader_score": 18.132468790498095
+      },
+      {
+        "node": "M104",
+        "out_degree": 5,
+        "in_degree": 5,
+        "weighted_out_degree": 15.822515614392964,
+        "leader_score": 15.822515614392962
+      },
+      {
+        "node": "M105",
+        "out_degree": 5,
+        "in_degree": 5,
+        "weighted_out_degree": 14.093786508934645,
+        "leader_score": 14.093786508934645
+      }
+    ]
+  },
+  "visualizations": {
+    "low1": "/home/runner/work/RiceEWS/RiceEWS/data/processed/module_03/network_graph_low1.html",
+    "low2": "/home/runner/work/RiceEWS/RiceEWS/data/processed/module_03/network_graph_low2.html",
+    "med1": "/home/runner/work/RiceEWS/RiceEWS/data/processed/module_03/network_graph_med1.html",
+    "med2": "/home/runner/work/RiceEWS/RiceEWS/data/processed/module_03/network_graph_med2.html"
+  }
+}
