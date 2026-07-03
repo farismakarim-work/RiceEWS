@@ -1,0 +1,1518 @@
+{
+  "module": "module_06_validation_robustness",
+  "input_network_results": "/home/runner/work/RiceEWS/RiceEWS/data/processed/module_03/network_inference_results.json",
+  "input_shock_results": "/home/runner/work/RiceEWS/RiceEWS/data/processed/module_04/shock_propagation_results.json",
+  "input_intervention_results": "/home/runner/work/RiceEWS/RiceEWS/data/processed/module_05/intervention_results.json",
+  "output_dir": "/home/runner/work/RiceEWS/RiceEWS/data/processed/module_06",
+  "grades": [
+    "low1",
+    "low2",
+    "med1",
+    "med2"
+  ],
+  "config": {
+    "shock_magnitude": 1.0,
+    "impact_threshold": 1e-09,
+    "top_n": 5,
+    "propagation_steps_range": [
+      3,
+      5,
+      7
+    ],
+    "attenuation_factors_range": [
+      0.3,
+      0.5,
+      0.7
+    ],
+    "high_stability_threshold": 0.7,
+    "low_stability_threshold": 0.4
+  },
+  "per_grade": {
+    "low1": {
+      "nodes": [
+        "M101",
+        "M102",
+        "M103",
+        "M104",
+        "M105",
+        "M106"
+      ],
+      "edges_count": 30,
+      "sweep_results": {
+        "steps=3": {
+          "param_type": "propagation_steps",
+          "param_value": 3,
+          "total_impact_per_source": {
+            "M101": 3.0,
+            "M102": 3.0,
+            "M103": 3.0,
+            "M104": 3.0,
+            "M105": 3.0,
+            "M106": 3.0000000000000004
+          },
+          "most_influential_sources": [
+            {
+              "node": "M106",
+              "total_impact": 3.0000000000000004
+            },
+            {
+              "node": "M101",
+              "total_impact": 3.0
+            },
+            {
+              "node": "M102",
+              "total_impact": 3.0
+            },
+            {
+              "node": "M103",
+              "total_impact": 3.0
+            },
+            {
+              "node": "M104",
+              "total_impact": 3.0
+            }
+          ],
+          "most_vulnerable_nodes": [
+            {
+              "node": "M103",
+              "cumulative_received_impact": 6.211333509609619
+            },
+            {
+              "node": "M105",
+              "cumulative_received_impact": 5.121927419736421
+            },
+            {
+              "node": "M106",
+              "cumulative_received_impact": 3.972609793145435
+            },
+            {
+              "node": "M104",
+              "cumulative_received_impact": 1.6108463803432886
+            },
+            {
+              "node": "M102",
+              "cumulative_received_impact": 0.5847768196252312
+            }
+          ],
+          "cumulative_impact_total": 18.0
+        },
+        "steps=5": {
+          "param_type": "propagation_steps",
+          "param_value": 5,
+          "total_impact_per_source": {
+            "M101": 5.0,
+            "M102": 5.0,
+            "M103": 5.0,
+            "M104": 5.0,
+            "M105": 5.0,
+            "M106": 5.0
+          },
+          "most_influential_sources": [
+            {
+              "node": "M101",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M102",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M103",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M104",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M105",
+              "total_impact": 5.0
+            }
+          ],
+          "most_vulnerable_nodes": [
+            {
+              "node": "M103",
+              "cumulative_received_impact": 10.18808469744589
+            },
+            {
+              "node": "M105",
+              "cumulative_received_impact": 8.711961927355622
+            },
+            {
+              "node": "M106",
+              "cumulative_received_impact": 6.797022052344551
+            },
+            {
+              "node": "M104",
+              "cumulative_received_impact": 2.585155184626923
+            },
+            {
+              "node": "M102",
+              "cumulative_received_impact": 0.9588522090569118
+            }
+          ],
+          "cumulative_impact_total": 30.0
+        },
+        "steps=7": {
+          "param_type": "propagation_steps",
+          "param_value": 7,
+          "total_impact_per_source": {
+            "M101": 7.000000000000001,
+            "M102": 7.0,
+            "M103": 7.0,
+            "M104": 7.0,
+            "M105": 7.0,
+            "M106": 6.999999999999999
+          },
+          "most_influential_sources": [
+            {
+              "node": "M101",
+              "total_impact": 7.000000000000001
+            },
+            {
+              "node": "M102",
+              "total_impact": 7.0
+            },
+            {
+              "node": "M103",
+              "total_impact": 7.0
+            },
+            {
+              "node": "M104",
+              "total_impact": 7.0
+            },
+            {
+              "node": "M105",
+              "total_impact": 7.0
+            }
+          ],
+          "most_vulnerable_nodes": [
+            {
+              "node": "M103",
+              "cumulative_received_impact": 14.208416978424841
+            },
+            {
+              "node": "M105",
+              "cumulative_received_impact": 12.31510675171497
+            },
+            {
+              "node": "M106",
+              "cumulative_received_impact": 9.557728153009048
+            },
+            {
+              "node": "M104",
+              "cumulative_received_impact": 3.566005455979534
+            },
+            {
+              "node": "M102",
+              "cumulative_received_impact": 1.3332563359907021
+            }
+          ],
+          "cumulative_impact_total": 42.0
+        },
+        "attenuation=0.3": {
+          "param_type": "attenuation_factor",
+          "param_value": 0.3,
+          "attenuated_node": "M101",
+          "total_impact_per_source": {
+            "M101": 5.0,
+            "M102": 5.0,
+            "M103": 5.0,
+            "M104": 5.0,
+            "M105": 5.0,
+            "M106": 5.0
+          },
+          "most_influential_sources": [
+            {
+              "node": "M101",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M102",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M103",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M104",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M105",
+              "total_impact": 5.0
+            }
+          ],
+          "most_vulnerable_nodes": [
+            {
+              "node": "M103",
+              "cumulative_received_impact": 10.18808469744589
+            },
+            {
+              "node": "M105",
+              "cumulative_received_impact": 8.711961927355622
+            },
+            {
+              "node": "M106",
+              "cumulative_received_impact": 6.797022052344551
+            },
+            {
+              "node": "M104",
+              "cumulative_received_impact": 2.585155184626923
+            },
+            {
+              "node": "M102",
+              "cumulative_received_impact": 0.9588522090569118
+            }
+          ],
+          "cumulative_impact_total": 30.0
+        },
+        "attenuation=0.5": {
+          "param_type": "attenuation_factor",
+          "param_value": 0.5,
+          "attenuated_node": "M101",
+          "total_impact_per_source": {
+            "M101": 5.0,
+            "M102": 5.0,
+            "M103": 5.0,
+            "M104": 5.0,
+            "M105": 5.0,
+            "M106": 5.0
+          },
+          "most_influential_sources": [
+            {
+              "node": "M101",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M102",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M103",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M104",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M105",
+              "total_impact": 5.0
+            }
+          ],
+          "most_vulnerable_nodes": [
+            {
+              "node": "M103",
+              "cumulative_received_impact": 10.18808469744589
+            },
+            {
+              "node": "M105",
+              "cumulative_received_impact": 8.711961927355622
+            },
+            {
+              "node": "M106",
+              "cumulative_received_impact": 6.797022052344551
+            },
+            {
+              "node": "M104",
+              "cumulative_received_impact": 2.585155184626923
+            },
+            {
+              "node": "M102",
+              "cumulative_received_impact": 0.9588522090569118
+            }
+          ],
+          "cumulative_impact_total": 30.0
+        },
+        "attenuation=0.7": {
+          "param_type": "attenuation_factor",
+          "param_value": 0.7,
+          "attenuated_node": "M101",
+          "total_impact_per_source": {
+            "M101": 5.0,
+            "M102": 5.0,
+            "M103": 5.0,
+            "M104": 5.0,
+            "M105": 5.0,
+            "M106": 5.0
+          },
+          "most_influential_sources": [
+            {
+              "node": "M101",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M102",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M103",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M104",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M105",
+              "total_impact": 5.0
+            }
+          ],
+          "most_vulnerable_nodes": [
+            {
+              "node": "M103",
+              "cumulative_received_impact": 10.18808469744589
+            },
+            {
+              "node": "M105",
+              "cumulative_received_impact": 8.711961927355622
+            },
+            {
+              "node": "M106",
+              "cumulative_received_impact": 6.797022052344551
+            },
+            {
+              "node": "M104",
+              "cumulative_received_impact": 2.585155184626923
+            },
+            {
+              "node": "M102",
+              "cumulative_received_impact": 0.9588522090569118
+            }
+          ],
+          "cumulative_impact_total": 30.0
+        }
+      },
+      "stability_metrics": {
+        "influential_consistency": 0.8889,
+        "vulnerable_consistency": 1.0,
+        "impact_cov": 0.2309,
+        "stability_score": 0.879
+      },
+      "confidence_level": "HIGH",
+      "cross_module_consistency": {
+        "m4_m5_influential_jaccard": 1.0,
+        "best_intervention_impact_reduction_pct": 22.023,
+        "cross_module_consistent": true
+      }
+    },
+    "low2": {
+      "nodes": [
+        "M101",
+        "M102",
+        "M103",
+        "M104",
+        "M105",
+        "M106"
+      ],
+      "edges_count": 30,
+      "sweep_results": {
+        "steps=3": {
+          "param_type": "propagation_steps",
+          "param_value": 3,
+          "total_impact_per_source": {
+            "M101": 2.9999999999999996,
+            "M102": 2.9999999999999996,
+            "M103": 3.0,
+            "M104": 2.9999999999999996,
+            "M105": 3.0000000000000004,
+            "M106": 3.0000000000000004
+          },
+          "most_influential_sources": [
+            {
+              "node": "M105",
+              "total_impact": 3.0000000000000004
+            },
+            {
+              "node": "M106",
+              "total_impact": 3.0000000000000004
+            },
+            {
+              "node": "M103",
+              "total_impact": 3.0
+            },
+            {
+              "node": "M101",
+              "total_impact": 2.9999999999999996
+            },
+            {
+              "node": "M102",
+              "total_impact": 2.9999999999999996
+            }
+          ],
+          "most_vulnerable_nodes": [
+            {
+              "node": "M103",
+              "cumulative_received_impact": 5.773332017552045
+            },
+            {
+              "node": "M105",
+              "cumulative_received_impact": 4.892989988916716
+            },
+            {
+              "node": "M106",
+              "cumulative_received_impact": 3.3670660987881407
+            },
+            {
+              "node": "M102",
+              "cumulative_received_impact": 1.5593812414105561
+            },
+            {
+              "node": "M104",
+              "cumulative_received_impact": 1.4093713644415313
+            }
+          ],
+          "cumulative_impact_total": 18.0
+        },
+        "steps=5": {
+          "param_type": "propagation_steps",
+          "param_value": 5,
+          "total_impact_per_source": {
+            "M101": 5.0,
+            "M102": 5.0,
+            "M103": 5.0,
+            "M104": 5.0,
+            "M105": 5.0,
+            "M106": 5.000000000000001
+          },
+          "most_influential_sources": [
+            {
+              "node": "M106",
+              "total_impact": 5.000000000000001
+            },
+            {
+              "node": "M101",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M102",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M103",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M104",
+              "total_impact": 5.0
+            }
+          ],
+          "most_vulnerable_nodes": [
+            {
+              "node": "M103",
+              "cumulative_received_impact": 9.533673960370562
+            },
+            {
+              "node": "M105",
+              "cumulative_received_impact": 8.248087634723682
+            },
+            {
+              "node": "M106",
+              "cumulative_received_impact": 5.695048203107958
+            },
+            {
+              "node": "M102",
+              "cumulative_received_impact": 2.482234003872957
+            },
+            {
+              "node": "M104",
+              "cumulative_received_impact": 2.3380908630043122
+            }
+          ],
+          "cumulative_impact_total": 30.0
+        },
+        "steps=7": {
+          "param_type": "propagation_steps",
+          "param_value": 7,
+          "total_impact_per_source": {
+            "M101": 6.999999999999998,
+            "M102": 7.0,
+            "M103": 7.0,
+            "M104": 7.0,
+            "M105": 7.0,
+            "M106": 7.000000000000002
+          },
+          "most_influential_sources": [
+            {
+              "node": "M106",
+              "total_impact": 7.000000000000002
+            },
+            {
+              "node": "M102",
+              "total_impact": 7.0
+            },
+            {
+              "node": "M103",
+              "total_impact": 7.0
+            },
+            {
+              "node": "M104",
+              "total_impact": 7.0
+            },
+            {
+              "node": "M105",
+              "total_impact": 7.0
+            }
+          ],
+          "most_vulnerable_nodes": [
+            {
+              "node": "M103",
+              "cumulative_received_impact": 13.285135893476905
+            },
+            {
+              "node": "M105",
+              "cumulative_received_impact": 11.629837396749025
+            },
+            {
+              "node": "M106",
+              "cumulative_received_impact": 8.014044596669027
+            },
+            {
+              "node": "M102",
+              "cumulative_received_impact": 3.403323625336386
+            },
+            {
+              "node": "M104",
+              "cumulative_received_impact": 3.2640615706381833
+            }
+          ],
+          "cumulative_impact_total": 42.0
+        },
+        "attenuation=0.3": {
+          "param_type": "attenuation_factor",
+          "param_value": 0.3,
+          "attenuated_node": "M106",
+          "total_impact_per_source": {
+            "M101": 5.000000000000001,
+            "M102": 5.0,
+            "M103": 5.0,
+            "M104": 5.0,
+            "M105": 5.0,
+            "M106": 5.000000000000002
+          },
+          "most_influential_sources": [
+            {
+              "node": "M106",
+              "total_impact": 5.000000000000002
+            },
+            {
+              "node": "M101",
+              "total_impact": 5.000000000000001
+            },
+            {
+              "node": "M102",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M103",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M104",
+              "total_impact": 5.0
+            }
+          ],
+          "most_vulnerable_nodes": [
+            {
+              "node": "M103",
+              "cumulative_received_impact": 9.533673960370562
+            },
+            {
+              "node": "M105",
+              "cumulative_received_impact": 8.248087634723683
+            },
+            {
+              "node": "M106",
+              "cumulative_received_impact": 5.695048203107958
+            },
+            {
+              "node": "M102",
+              "cumulative_received_impact": 2.482234003872957
+            },
+            {
+              "node": "M104",
+              "cumulative_received_impact": 2.3380908630043127
+            }
+          ],
+          "cumulative_impact_total": 30.0
+        },
+        "attenuation=0.5": {
+          "param_type": "attenuation_factor",
+          "param_value": 0.5,
+          "attenuated_node": "M106",
+          "total_impact_per_source": {
+            "M101": 5.0,
+            "M102": 5.0,
+            "M103": 5.0,
+            "M104": 5.0,
+            "M105": 5.0,
+            "M106": 5.000000000000001
+          },
+          "most_influential_sources": [
+            {
+              "node": "M106",
+              "total_impact": 5.000000000000001
+            },
+            {
+              "node": "M101",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M102",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M103",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M104",
+              "total_impact": 5.0
+            }
+          ],
+          "most_vulnerable_nodes": [
+            {
+              "node": "M103",
+              "cumulative_received_impact": 9.533673960370562
+            },
+            {
+              "node": "M105",
+              "cumulative_received_impact": 8.248087634723682
+            },
+            {
+              "node": "M106",
+              "cumulative_received_impact": 5.695048203107958
+            },
+            {
+              "node": "M102",
+              "cumulative_received_impact": 2.482234003872957
+            },
+            {
+              "node": "M104",
+              "cumulative_received_impact": 2.3380908630043122
+            }
+          ],
+          "cumulative_impact_total": 30.0
+        },
+        "attenuation=0.7": {
+          "param_type": "attenuation_factor",
+          "param_value": 0.7,
+          "attenuated_node": "M106",
+          "total_impact_per_source": {
+            "M101": 5.000000000000001,
+            "M102": 5.0,
+            "M103": 5.0,
+            "M104": 5.0,
+            "M105": 5.0,
+            "M106": 5.000000000000001
+          },
+          "most_influential_sources": [
+            {
+              "node": "M101",
+              "total_impact": 5.000000000000001
+            },
+            {
+              "node": "M106",
+              "total_impact": 5.000000000000001
+            },
+            {
+              "node": "M102",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M103",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M104",
+              "total_impact": 5.0
+            }
+          ],
+          "most_vulnerable_nodes": [
+            {
+              "node": "M103",
+              "cumulative_received_impact": 9.533673960370562
+            },
+            {
+              "node": "M105",
+              "cumulative_received_impact": 8.248087634723683
+            },
+            {
+              "node": "M106",
+              "cumulative_received_impact": 5.695048203107958
+            },
+            {
+              "node": "M102",
+              "cumulative_received_impact": 2.482234003872957
+            },
+            {
+              "node": "M104",
+              "cumulative_received_impact": 2.3380908630043127
+            }
+          ],
+          "cumulative_impact_total": 30.0
+        }
+      },
+      "stability_metrics": {
+        "influential_consistency": 0.8,
+        "vulnerable_consistency": 1.0,
+        "impact_cov": 0.2309,
+        "stability_score": 0.8376
+      },
+      "confidence_level": "HIGH",
+      "cross_module_consistency": {
+        "m4_m5_influential_jaccard": 1.0,
+        "best_intervention_impact_reduction_pct": 47.4695,
+        "cross_module_consistent": true
+      }
+    },
+    "med1": {
+      "nodes": [
+        "M101",
+        "M102",
+        "M103",
+        "M104",
+        "M105",
+        "M106"
+      ],
+      "edges_count": 30,
+      "sweep_results": {
+        "steps=3": {
+          "param_type": "propagation_steps",
+          "param_value": 3,
+          "total_impact_per_source": {
+            "M101": 3.0,
+            "M102": 2.999999999999999,
+            "M103": 3.0000000000000004,
+            "M104": 3.000000000000001,
+            "M105": 3.0,
+            "M106": 3.0000000000000004
+          },
+          "most_influential_sources": [
+            {
+              "node": "M104",
+              "total_impact": 3.000000000000001
+            },
+            {
+              "node": "M103",
+              "total_impact": 3.0000000000000004
+            },
+            {
+              "node": "M106",
+              "total_impact": 3.0000000000000004
+            },
+            {
+              "node": "M101",
+              "total_impact": 3.0
+            },
+            {
+              "node": "M105",
+              "total_impact": 3.0
+            }
+          ],
+          "most_vulnerable_nodes": [
+            {
+              "node": "M103",
+              "cumulative_received_impact": 6.14431419209194
+            },
+            {
+              "node": "M102",
+              "cumulative_received_impact": 4.347150901520665
+            },
+            {
+              "node": "M104",
+              "cumulative_received_impact": 3.8279355501943444
+            },
+            {
+              "node": "M106",
+              "cumulative_received_impact": 1.881542725400176
+            },
+            {
+              "node": "M101",
+              "cumulative_received_impact": 1.2006635957023852
+            }
+          ],
+          "cumulative_impact_total": 18.000000000000004
+        },
+        "steps=5": {
+          "param_type": "propagation_steps",
+          "param_value": 5,
+          "total_impact_per_source": {
+            "M101": 5.0,
+            "M102": 5.0,
+            "M103": 5.0,
+            "M104": 5.000000000000001,
+            "M105": 5.0,
+            "M106": 5.000000000000002
+          },
+          "most_influential_sources": [
+            {
+              "node": "M106",
+              "total_impact": 5.000000000000002
+            },
+            {
+              "node": "M104",
+              "total_impact": 5.000000000000001
+            },
+            {
+              "node": "M101",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M102",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M103",
+              "total_impact": 5.0
+            }
+          ],
+          "most_vulnerable_nodes": [
+            {
+              "node": "M103",
+              "cumulative_received_impact": 10.240527662420426
+            },
+            {
+              "node": "M102",
+              "cumulative_received_impact": 7.325890150314712
+            },
+            {
+              "node": "M104",
+              "cumulative_received_impact": 6.596628968271251
+            },
+            {
+              "node": "M106",
+              "cumulative_received_impact": 2.9233994232332265
+            },
+            {
+              "node": "M101",
+              "cumulative_received_impact": 1.9111680827855113
+            }
+          ],
+          "cumulative_impact_total": 30.0
+        },
+        "steps=7": {
+          "param_type": "propagation_steps",
+          "param_value": 7,
+          "total_impact_per_source": {
+            "M101": 7.000000000000001,
+            "M102": 7.0,
+            "M103": 7.000000000000002,
+            "M104": 7.000000000000003,
+            "M105": 7.0,
+            "M106": 7.0000000000000036
+          },
+          "most_influential_sources": [
+            {
+              "node": "M106",
+              "total_impact": 7.0000000000000036
+            },
+            {
+              "node": "M104",
+              "total_impact": 7.000000000000003
+            },
+            {
+              "node": "M103",
+              "total_impact": 7.000000000000002
+            },
+            {
+              "node": "M101",
+              "total_impact": 7.000000000000001
+            },
+            {
+              "node": "M102",
+              "total_impact": 7.0
+            }
+          ],
+          "most_vulnerable_nodes": [
+            {
+              "node": "M103",
+              "cumulative_received_impact": 14.34666043616662
+            },
+            {
+              "node": "M102",
+              "cumulative_received_impact": 10.299205249466516
+            },
+            {
+              "node": "M104",
+              "cumulative_received_impact": 9.360098271463443
+            },
+            {
+              "node": "M106",
+              "cumulative_received_impact": 3.9655744057450866
+            },
+            {
+              "node": "M101",
+              "cumulative_received_impact": 2.6207808271891895
+            }
+          ],
+          "cumulative_impact_total": 42.00000000000001
+        },
+        "attenuation=0.3": {
+          "param_type": "attenuation_factor",
+          "param_value": 0.3,
+          "attenuated_node": "M106",
+          "total_impact_per_source": {
+            "M101": 5.0,
+            "M102": 5.0,
+            "M103": 5.0,
+            "M104": 5.0,
+            "M105": 5.0,
+            "M106": 5.0
+          },
+          "most_influential_sources": [
+            {
+              "node": "M101",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M102",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M103",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M104",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M105",
+              "total_impact": 5.0
+            }
+          ],
+          "most_vulnerable_nodes": [
+            {
+              "node": "M103",
+              "cumulative_received_impact": 10.240527662420426
+            },
+            {
+              "node": "M102",
+              "cumulative_received_impact": 7.325890150314712
+            },
+            {
+              "node": "M104",
+              "cumulative_received_impact": 6.596628968271249
+            },
+            {
+              "node": "M106",
+              "cumulative_received_impact": 2.9233994232332265
+            },
+            {
+              "node": "M101",
+              "cumulative_received_impact": 1.9111680827855109
+            }
+          ],
+          "cumulative_impact_total": 29.999999999999996
+        },
+        "attenuation=0.5": {
+          "param_type": "attenuation_factor",
+          "param_value": 0.5,
+          "attenuated_node": "M106",
+          "total_impact_per_source": {
+            "M101": 5.0,
+            "M102": 5.0,
+            "M103": 5.0,
+            "M104": 5.000000000000001,
+            "M105": 5.0,
+            "M106": 5.000000000000002
+          },
+          "most_influential_sources": [
+            {
+              "node": "M106",
+              "total_impact": 5.000000000000002
+            },
+            {
+              "node": "M104",
+              "total_impact": 5.000000000000001
+            },
+            {
+              "node": "M101",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M102",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M103",
+              "total_impact": 5.0
+            }
+          ],
+          "most_vulnerable_nodes": [
+            {
+              "node": "M103",
+              "cumulative_received_impact": 10.240527662420426
+            },
+            {
+              "node": "M102",
+              "cumulative_received_impact": 7.325890150314712
+            },
+            {
+              "node": "M104",
+              "cumulative_received_impact": 6.596628968271251
+            },
+            {
+              "node": "M106",
+              "cumulative_received_impact": 2.9233994232332265
+            },
+            {
+              "node": "M101",
+              "cumulative_received_impact": 1.9111680827855113
+            }
+          ],
+          "cumulative_impact_total": 30.0
+        },
+        "attenuation=0.7": {
+          "param_type": "attenuation_factor",
+          "param_value": 0.7,
+          "attenuated_node": "M106",
+          "total_impact_per_source": {
+            "M101": 5.0,
+            "M102": 5.0,
+            "M103": 5.0,
+            "M104": 5.0,
+            "M105": 5.0,
+            "M106": 5.0
+          },
+          "most_influential_sources": [
+            {
+              "node": "M101",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M102",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M103",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M104",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M105",
+              "total_impact": 5.0
+            }
+          ],
+          "most_vulnerable_nodes": [
+            {
+              "node": "M103",
+              "cumulative_received_impact": 10.240527662420426
+            },
+            {
+              "node": "M102",
+              "cumulative_received_impact": 7.325890150314712
+            },
+            {
+              "node": "M104",
+              "cumulative_received_impact": 6.596628968271249
+            },
+            {
+              "node": "M106",
+              "cumulative_received_impact": 2.9233994232332265
+            },
+            {
+              "node": "M101",
+              "cumulative_received_impact": 1.9111680827855109
+            }
+          ],
+          "cumulative_impact_total": 29.999999999999996
+        }
+      },
+      "stability_metrics": {
+        "influential_consistency": 0.7556,
+        "vulnerable_consistency": 1.0,
+        "impact_cov": 0.2309,
+        "stability_score": 0.817
+      },
+      "confidence_level": "HIGH",
+      "cross_module_consistency": {
+        "m4_m5_influential_jaccard": 1.0,
+        "best_intervention_impact_reduction_pct": 35.6224,
+        "cross_module_consistent": true
+      }
+    },
+    "med2": {
+      "nodes": [
+        "M101",
+        "M102",
+        "M103",
+        "M104",
+        "M105",
+        "M106"
+      ],
+      "edges_count": 30,
+      "sweep_results": {
+        "steps=3": {
+          "param_type": "propagation_steps",
+          "param_value": 3,
+          "total_impact_per_source": {
+            "M101": 2.999999999999999,
+            "M102": 3.0,
+            "M103": 2.9999999999999996,
+            "M104": 2.9999999999999996,
+            "M105": 3.0,
+            "M106": 2.9999999999999996
+          },
+          "most_influential_sources": [
+            {
+              "node": "M102",
+              "total_impact": 3.0
+            },
+            {
+              "node": "M105",
+              "total_impact": 3.0
+            },
+            {
+              "node": "M103",
+              "total_impact": 2.9999999999999996
+            },
+            {
+              "node": "M104",
+              "total_impact": 2.9999999999999996
+            },
+            {
+              "node": "M106",
+              "total_impact": 2.9999999999999996
+            }
+          ],
+          "most_vulnerable_nodes": [
+            {
+              "node": "M103",
+              "cumulative_received_impact": 5.000691747351622
+            },
+            {
+              "node": "M102",
+              "cumulative_received_impact": 3.9749122851322234
+            },
+            {
+              "node": "M104",
+              "cumulative_received_impact": 3.493404047090892
+            },
+            {
+              "node": "M106",
+              "cumulative_received_impact": 3.12840173008697
+            },
+            {
+              "node": "M105",
+              "cumulative_received_impact": 1.7434322544009877
+            }
+          ],
+          "cumulative_impact_total": 17.999999999999996
+        },
+        "steps=5": {
+          "param_type": "propagation_steps",
+          "param_value": 5,
+          "total_impact_per_source": {
+            "M101": 4.999999999999999,
+            "M102": 4.999999999999998,
+            "M103": 4.999999999999998,
+            "M104": 4.999999999999998,
+            "M105": 5.0,
+            "M106": 4.999999999999999
+          },
+          "most_influential_sources": [
+            {
+              "node": "M105",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M101",
+              "total_impact": 4.999999999999999
+            },
+            {
+              "node": "M106",
+              "total_impact": 4.999999999999999
+            },
+            {
+              "node": "M102",
+              "total_impact": 4.999999999999998
+            },
+            {
+              "node": "M103",
+              "total_impact": 4.999999999999998
+            }
+          ],
+          "most_vulnerable_nodes": [
+            {
+              "node": "M103",
+              "cumulative_received_impact": 8.26329554878605
+            },
+            {
+              "node": "M102",
+              "cumulative_received_impact": 6.804383514234747
+            },
+            {
+              "node": "M104",
+              "cumulative_received_impact": 6.009288847878622
+            },
+            {
+              "node": "M106",
+              "cumulative_received_impact": 4.990204896277655
+            },
+            {
+              "node": "M105",
+              "cumulative_received_impact": 2.7869155842061284
+            }
+          ],
+          "cumulative_impact_total": 29.999999999999993
+        },
+        "steps=7": {
+          "param_type": "propagation_steps",
+          "param_value": 7,
+          "total_impact_per_source": {
+            "M101": 6.999999999999997,
+            "M102": 6.999999999999998,
+            "M103": 6.999999999999998,
+            "M104": 6.999999999999998,
+            "M105": 7.0,
+            "M106": 6.999999999999998
+          },
+          "most_influential_sources": [
+            {
+              "node": "M105",
+              "total_impact": 7.0
+            },
+            {
+              "node": "M102",
+              "total_impact": 6.999999999999998
+            },
+            {
+              "node": "M103",
+              "total_impact": 6.999999999999998
+            },
+            {
+              "node": "M104",
+              "total_impact": 6.999999999999998
+            },
+            {
+              "node": "M106",
+              "total_impact": 6.999999999999998
+            }
+          ],
+          "most_vulnerable_nodes": [
+            {
+              "node": "M103",
+              "cumulative_received_impact": 11.520553488707499
+            },
+            {
+              "node": "M102",
+              "cumulative_received_impact": 9.639915143317053
+            },
+            {
+              "node": "M104",
+              "cumulative_received_impact": 8.523972663815513
+            },
+            {
+              "node": "M106",
+              "cumulative_received_impact": 6.859448218525809
+            },
+            {
+              "node": "M105",
+              "cumulative_received_impact": 3.822527582802169
+            }
+          ],
+          "cumulative_impact_total": 41.999999999999986
+        },
+        "attenuation=0.3": {
+          "param_type": "attenuation_factor",
+          "param_value": 0.3,
+          "attenuated_node": "M105",
+          "total_impact_per_source": {
+            "M101": 4.999999999999999,
+            "M102": 4.999999999999998,
+            "M103": 4.999999999999998,
+            "M104": 4.999999999999998,
+            "M105": 5.0,
+            "M106": 4.999999999999999
+          },
+          "most_influential_sources": [
+            {
+              "node": "M105",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M101",
+              "total_impact": 4.999999999999999
+            },
+            {
+              "node": "M106",
+              "total_impact": 4.999999999999999
+            },
+            {
+              "node": "M102",
+              "total_impact": 4.999999999999998
+            },
+            {
+              "node": "M103",
+              "total_impact": 4.999999999999998
+            }
+          ],
+          "most_vulnerable_nodes": [
+            {
+              "node": "M103",
+              "cumulative_received_impact": 8.26329554878605
+            },
+            {
+              "node": "M102",
+              "cumulative_received_impact": 6.804383514234747
+            },
+            {
+              "node": "M104",
+              "cumulative_received_impact": 6.009288847878622
+            },
+            {
+              "node": "M106",
+              "cumulative_received_impact": 4.990204896277655
+            },
+            {
+              "node": "M105",
+              "cumulative_received_impact": 2.7869155842061284
+            }
+          ],
+          "cumulative_impact_total": 29.999999999999993
+        },
+        "attenuation=0.5": {
+          "param_type": "attenuation_factor",
+          "param_value": 0.5,
+          "attenuated_node": "M105",
+          "total_impact_per_source": {
+            "M101": 4.999999999999999,
+            "M102": 4.999999999999998,
+            "M103": 4.999999999999998,
+            "M104": 4.999999999999998,
+            "M105": 5.0,
+            "M106": 4.999999999999999
+          },
+          "most_influential_sources": [
+            {
+              "node": "M105",
+              "total_impact": 5.0
+            },
+            {
+              "node": "M101",
+              "total_impact": 4.999999999999999
+            },
+            {
+              "node": "M106",
+              "total_impact": 4.999999999999999
+            },
+            {
+              "node": "M102",
+              "total_impact": 4.999999999999998
+            },
+            {
+              "node": "M103",
+              "total_impact": 4.999999999999998
+            }
+          ],
+          "most_vulnerable_nodes": [
+            {
+              "node": "M103",
+              "cumulative_received_impact": 8.26329554878605
+            },
+            {
+              "node": "M102",
+              "cumulative_received_impact": 6.804383514234747
+            },
+            {
+              "node": "M104",
+              "cumulative_received_impact": 6.009288847878622
+            },
+            {
+              "node": "M106",
+              "cumulative_received_impact": 4.990204896277655
+            },
+            {
+              "node": "M105",
+              "cumulative_received_impact": 2.7869155842061284
+            }
+          ],
+          "cumulative_impact_total": 29.999999999999993
+        },
+        "attenuation=0.7": {
+          "param_type": "attenuation_factor",
+          "param_value": 0.7,
+          "attenuated_node": "M105",
+          "total_impact_per_source": {
+            "M101": 4.999999999999998,
+            "M102": 4.999999999999998,
+            "M103": 4.999999999999998,
+            "M104": 4.999999999999998,
+            "M105": 4.999999999999999,
+            "M106": 4.999999999999999
+          },
+          "most_influential_sources": [
+            {
+              "node": "M105",
+              "total_impact": 4.999999999999999
+            },
+            {
+              "node": "M106",
+              "total_impact": 4.999999999999999
+            },
+            {
+              "node": "M101",
+              "total_impact": 4.999999999999998
+            },
+            {
+              "node": "M102",
+              "total_impact": 4.999999999999998
+            },
+            {
+              "node": "M103",
+              "total_impact": 4.999999999999998
+            }
+          ],
+          "most_vulnerable_nodes": [
+            {
+              "node": "M103",
+              "cumulative_received_impact": 8.26329554878605
+            },
+            {
+              "node": "M102",
+              "cumulative_received_impact": 6.804383514234746
+            },
+            {
+              "node": "M104",
+              "cumulative_received_impact": 6.009288847878622
+            },
+            {
+              "node": "M106",
+              "cumulative_received_impact": 4.990204896277655
+            },
+            {
+              "node": "M105",
+              "cumulative_received_impact": 2.7869155842061284
+            }
+          ],
+          "cumulative_impact_total": 29.999999999999993
+        }
+      },
+      "stability_metrics": {
+        "influential_consistency": 0.8222,
+        "vulnerable_consistency": 1.0,
+        "impact_cov": 0.2309,
+        "stability_score": 0.848
+      },
+      "confidence_level": "HIGH",
+      "cross_module_consistency": {
+        "m4_m5_influential_jaccard": 1.0,
+        "best_intervention_impact_reduction_pct": 33.208,
+        "cross_module_consistent": true
+      }
+    }
+  },
+  "visualizations": {
+    "low1": "/home/runner/work/RiceEWS/RiceEWS/data/processed/module_06/robustness_graph_low1.html",
+    "low2": "/home/runner/work/RiceEWS/RiceEWS/data/processed/module_06/robustness_graph_low2.html",
+    "med1": "/home/runner/work/RiceEWS/RiceEWS/data/processed/module_06/robustness_graph_med1.html",
+    "med2": "/home/runner/work/RiceEWS/RiceEWS/data/processed/module_06/robustness_graph_med2.html"
+  }
+}

@@ -1,0 +1,13 @@
+grade,rank,scenario,baseline_cumulative_impact,intervention_cumulative_impact,impact_reduction_pct,affected_nodes_reduction
+low1,1,node_attenuation,30.0,23.393088,22.023,1.0
+low1,2,topk_source_control,30.0,23.393088,22.023,1.0
+low1,3,edge_attenuation,30.0,30.0,-0.0,0.0
+low2,1,node_attenuation,30.0,15.759145,47.4695,1.0
+low2,2,topk_source_control,30.0,15.759145,47.4695,1.0
+low2,3,edge_attenuation,30.0,30.0,0.0,0.0
+med1,1,node_attenuation,30.0,19.313278,35.6224,1.0
+med1,2,topk_source_control,30.0,19.313278,35.6224,1.0
+med1,3,edge_attenuation,30.0,30.0,-0.0,0.0
+med2,1,node_attenuation,30.0,20.037591,33.208,1.0
+med2,2,topk_source_control,30.0,20.037591,33.208,1.0
+med2,3,edge_attenuation,30.0,30.0,-0.0,0.0

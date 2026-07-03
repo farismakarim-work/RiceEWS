@@ -1,0 +1,5 @@
+grade,nodes,edges,influential_consistency,vulnerable_consistency,impact_cov,stability_score,confidence_level,m4_m5_influential_jaccard,best_intervention_reduction_pct
+low1,6,30,0.8889,1.0,0.2309,0.879,HIGH,1.0,22.023
+low2,6,30,0.8,1.0,0.2309,0.8376,HIGH,1.0,47.4695
+med1,6,30,0.7556,1.0,0.2309,0.817,HIGH,1.0,35.6224
+med2,6,30,0.8222,1.0,0.2309,0.848,HIGH,1.0,33.208

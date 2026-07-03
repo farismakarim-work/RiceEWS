@@ -1,0 +1,1953 @@
+{
+  "module": "module_05_intervention_analysis",
+  "input_shock_results": "/home/runner/work/RiceEWS/RiceEWS/data/processed/module_04/shock_propagation_results.json",
+  "input_network_edges": "/home/runner/work/RiceEWS/RiceEWS/data/processed/module_03/network_edges.csv",
+  "output_dir": "/home/runner/work/RiceEWS/RiceEWS/data/processed/module_05",
+  "grades": [
+    "low1",
+    "low2",
+    "med1",
+    "med2"
+  ],
+  "config": {
+    "num_steps": 5,
+    "shock_magnitude": 1.0,
+    "impact_threshold": 1e-09,
+    "top_n": 5,
+    "node_attenuation_factor": 0.0,
+    "edge_attenuation_factor": 0.0,
+    "topk_control": 1
+  },
+  "per_grade": {
+    "low1": {
+      "baseline": {
+        "total_impact_per_source": {
+          "M101": 5.0,
+          "M102": 5.0,
+          "M103": 5.0,
+          "M104": 5.0,
+          "M105": 5.0,
+          "M106": 5.0
+        },
+        "affected_nodes_count": {
+          "M101": 6,
+          "M102": 6,
+          "M103": 6,
+          "M104": 6,
+          "M105": 6,
+          "M106": 6
+        },
+        "most_influential_sources": [
+          {
+            "node": "M101",
+            "total_impact": 5.0,
+            "affected_nodes_count": 6
+          },
+          {
+            "node": "M102",
+            "total_impact": 5.0,
+            "affected_nodes_count": 6
+          },
+          {
+            "node": "M103",
+            "total_impact": 5.0,
+            "affected_nodes_count": 6
+          },
+          {
+            "node": "M104",
+            "total_impact": 5.0,
+            "affected_nodes_count": 6
+          },
+          {
+            "node": "M105",
+            "total_impact": 5.0,
+            "affected_nodes_count": 6
+          }
+        ],
+        "most_vulnerable_nodes": [
+          {
+            "node": "M103",
+            "cumulative_received_impact": 10.18808469744589
+          },
+          {
+            "node": "M105",
+            "cumulative_received_impact": 8.711961927355622
+          },
+          {
+            "node": "M106",
+            "cumulative_received_impact": 6.797022052344551
+          },
+          {
+            "node": "M104",
+            "cumulative_received_impact": 2.585155184626923
+          },
+          {
+            "node": "M102",
+            "cumulative_received_impact": 0.9588522090569118
+          }
+        ],
+        "cumulative_impact_total": 30.0
+      },
+      "scenarios": {
+        "node_attenuation": {
+          "description": "Attenuate outgoing propagation of top-1 source nodes by factor 0.0",
+          "target_nodes": [
+            "M101"
+          ],
+          "attenuation_factor": 0.0,
+          "simulation": {
+            "total_impact_per_source": {
+              "M101": 0.0,
+              "M102": 4.183198016615324,
+              "M103": 4.853691893444475,
+              "M104": 4.794046172368688,
+              "M105": 4.717508592225849,
+              "M106": 4.8446429089524194
+            },
+            "affected_nodes_count": {
+              "M101": 0,
+              "M102": 6,
+              "M103": 6,
+              "M104": 6,
+              "M105": 6,
+              "M106": 6
+            },
+            "most_influential_sources": [
+              {
+                "node": "M103",
+                "total_impact": 4.853691893444475,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M106",
+                "total_impact": 4.8446429089524194,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M104",
+                "total_impact": 4.794046172368688,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M105",
+                "total_impact": 4.717508592225849,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M102",
+                "total_impact": 4.183198016615324,
+                "affected_nodes_count": 6
+              }
+            ],
+            "most_vulnerable_nodes": [
+              {
+                "node": "M103",
+                "cumulative_received_impact": 7.9501260587794205
+              },
+              {
+                "node": "M105",
+                "cumulative_received_impact": 7.055989767901992
+              },
+              {
+                "node": "M106",
+                "cumulative_received_impact": 5.364346383386012
+              },
+              {
+                "node": "M104",
+                "cumulative_received_impact": 1.6604130003900646
+              },
+              {
+                "node": "M102",
+                "cumulative_received_impact": 0.7100552001420163
+              }
+            ],
+            "cumulative_impact_total": 23.393087583606757
+          },
+          "comparison": {
+            "baseline_cumulative_impact": 30.0,
+            "intervention_cumulative_impact": 23.393087583606757,
+            "impact_reduction_pct": 22.023,
+            "baseline_avg_affected_nodes": 6.0,
+            "intervention_avg_affected_nodes": 5.0,
+            "affected_nodes_reduction": 1.0,
+            "influential_rank_changes": {
+              "M101": {
+                "baseline_rank": 1,
+                "intervention_rank": null
+              },
+              "M106": {
+                "baseline_rank": null,
+                "intervention_rank": 2
+              },
+              "M102": {
+                "baseline_rank": 2,
+                "intervention_rank": 5
+              },
+              "M103": {
+                "baseline_rank": 3,
+                "intervention_rank": 1
+              },
+              "M104": {
+                "baseline_rank": 4,
+                "intervention_rank": 3
+              },
+              "M105": {
+                "baseline_rank": 5,
+                "intervention_rank": 4
+              }
+            },
+            "vulnerable_rank_changes": {
+              "M106": {
+                "baseline_rank": 3,
+                "intervention_rank": 3
+              },
+              "M102": {
+                "baseline_rank": 5,
+                "intervention_rank": 5
+              },
+              "M103": {
+                "baseline_rank": 1,
+                "intervention_rank": 1
+              },
+              "M104": {
+                "baseline_rank": 4,
+                "intervention_rank": 4
+              },
+              "M105": {
+                "baseline_rank": 2,
+                "intervention_rank": 2
+              }
+            }
+          }
+        },
+        "edge_attenuation": {
+          "description": "Attenuate top-1 highest-weight edges by factor 0.0",
+          "target_edges": [
+            "M106\u2192M105"
+          ],
+          "attenuation_factor": 0.0,
+          "simulation": {
+            "total_impact_per_source": {
+              "M101": 5.0,
+              "M102": 5.0,
+              "M103": 5.0,
+              "M104": 5.0,
+              "M105": 5.0,
+              "M106": 5.000000000000002
+            },
+            "affected_nodes_count": {
+              "M101": 6,
+              "M102": 6,
+              "M103": 6,
+              "M104": 6,
+              "M105": 6,
+              "M106": 6
+            },
+            "most_influential_sources": [
+              {
+                "node": "M106",
+                "total_impact": 5.000000000000002,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M101",
+                "total_impact": 5.0,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M102",
+                "total_impact": 5.0,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M103",
+                "total_impact": 5.0,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M104",
+                "total_impact": 5.0,
+                "affected_nodes_count": 6
+              }
+            ],
+            "most_vulnerable_nodes": [
+              {
+                "node": "M103",
+                "cumulative_received_impact": 12.226289235865757
+              },
+              {
+                "node": "M106",
+                "cumulative_received_impact": 7.630279350315496
+              },
+              {
+                "node": "M105",
+                "cumulative_received_impact": 5.339472238939442
+              },
+              {
+                "node": "M104",
+                "cumulative_received_impact": 2.977239265632703
+              },
+              {
+                "node": "M102",
+                "cumulative_received_impact": 1.1414101221847905
+              }
+            ],
+            "cumulative_impact_total": 30.000000000000004
+          },
+          "comparison": {
+            "baseline_cumulative_impact": 30.0,
+            "intervention_cumulative_impact": 30.000000000000004,
+            "impact_reduction_pct": -0.0,
+            "baseline_avg_affected_nodes": 6.0,
+            "intervention_avg_affected_nodes": 6.0,
+            "affected_nodes_reduction": 0.0,
+            "influential_rank_changes": {
+              "M101": {
+                "baseline_rank": 1,
+                "intervention_rank": 2
+              },
+              "M106": {
+                "baseline_rank": null,
+                "intervention_rank": 1
+              },
+              "M102": {
+                "baseline_rank": 2,
+                "intervention_rank": 3
+              },
+              "M103": {
+                "baseline_rank": 3,
+                "intervention_rank": 4
+              },
+              "M104": {
+                "baseline_rank": 4,
+                "intervention_rank": 5
+              },
+              "M105": {
+                "baseline_rank": 5,
+                "intervention_rank": null
+              }
+            },
+            "vulnerable_rank_changes": {
+              "M106": {
+                "baseline_rank": 3,
+                "intervention_rank": 2
+              },
+              "M102": {
+                "baseline_rank": 5,
+                "intervention_rank": 5
+              },
+              "M103": {
+                "baseline_rank": 1,
+                "intervention_rank": 1
+              },
+              "M104": {
+                "baseline_rank": 4,
+                "intervention_rank": 4
+              },
+              "M105": {
+                "baseline_rank": 2,
+                "intervention_rank": 3
+              }
+            }
+          }
+        },
+        "topk_source_control": {
+          "description": "Remove all outgoing edges from top-1 most influential sources",
+          "controlled_sources": [
+            "M101"
+          ],
+          "simulation": {
+            "total_impact_per_source": {
+              "M101": 0.0,
+              "M102": 4.183198016615324,
+              "M103": 4.853691893444475,
+              "M104": 4.794046172368688,
+              "M105": 4.717508592225849,
+              "M106": 4.8446429089524194
+            },
+            "affected_nodes_count": {
+              "M101": 0,
+              "M102": 6,
+              "M103": 6,
+              "M104": 6,
+              "M105": 6,
+              "M106": 6
+            },
+            "most_influential_sources": [
+              {
+                "node": "M103",
+                "total_impact": 4.853691893444475,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M106",
+                "total_impact": 4.8446429089524194,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M104",
+                "total_impact": 4.794046172368688,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M105",
+                "total_impact": 4.717508592225849,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M102",
+                "total_impact": 4.183198016615324,
+                "affected_nodes_count": 6
+              }
+            ],
+            "most_vulnerable_nodes": [
+              {
+                "node": "M103",
+                "cumulative_received_impact": 7.9501260587794205
+              },
+              {
+                "node": "M105",
+                "cumulative_received_impact": 7.055989767901992
+              },
+              {
+                "node": "M106",
+                "cumulative_received_impact": 5.364346383386012
+              },
+              {
+                "node": "M104",
+                "cumulative_received_impact": 1.6604130003900646
+              },
+              {
+                "node": "M102",
+                "cumulative_received_impact": 0.7100552001420163
+              }
+            ],
+            "cumulative_impact_total": 23.393087583606757
+          },
+          "comparison": {
+            "baseline_cumulative_impact": 30.0,
+            "intervention_cumulative_impact": 23.393087583606757,
+            "impact_reduction_pct": 22.023,
+            "baseline_avg_affected_nodes": 6.0,
+            "intervention_avg_affected_nodes": 5.0,
+            "affected_nodes_reduction": 1.0,
+            "influential_rank_changes": {
+              "M101": {
+                "baseline_rank": 1,
+                "intervention_rank": null
+              },
+              "M106": {
+                "baseline_rank": null,
+                "intervention_rank": 2
+              },
+              "M102": {
+                "baseline_rank": 2,
+                "intervention_rank": 5
+              },
+              "M103": {
+                "baseline_rank": 3,
+                "intervention_rank": 1
+              },
+              "M104": {
+                "baseline_rank": 4,
+                "intervention_rank": 3
+              },
+              "M105": {
+                "baseline_rank": 5,
+                "intervention_rank": 4
+              }
+            },
+            "vulnerable_rank_changes": {
+              "M106": {
+                "baseline_rank": 3,
+                "intervention_rank": 3
+              },
+              "M102": {
+                "baseline_rank": 5,
+                "intervention_rank": 5
+              },
+              "M103": {
+                "baseline_rank": 1,
+                "intervention_rank": 1
+              },
+              "M104": {
+                "baseline_rank": 4,
+                "intervention_rank": 4
+              },
+              "M105": {
+                "baseline_rank": 2,
+                "intervention_rank": 2
+              }
+            }
+          }
+        }
+      },
+      "ranking": [
+        {
+          "scenario": "node_attenuation",
+          "impact_reduction_pct": 22.023,
+          "affected_nodes_reduction": 1.0
+        },
+        {
+          "scenario": "topk_source_control",
+          "impact_reduction_pct": 22.023,
+          "affected_nodes_reduction": 1.0
+        },
+        {
+          "scenario": "edge_attenuation",
+          "impact_reduction_pct": -0.0,
+          "affected_nodes_reduction": 0.0
+        }
+      ]
+    },
+    "low2": {
+      "baseline": {
+        "total_impact_per_source": {
+          "M101": 5.0,
+          "M102": 5.0,
+          "M103": 5.0,
+          "M104": 5.0,
+          "M105": 5.0,
+          "M106": 5.000000000000001
+        },
+        "affected_nodes_count": {
+          "M101": 6,
+          "M102": 6,
+          "M103": 6,
+          "M104": 6,
+          "M105": 6,
+          "M106": 6
+        },
+        "most_influential_sources": [
+          {
+            "node": "M106",
+            "total_impact": 5.000000000000001,
+            "affected_nodes_count": 6
+          },
+          {
+            "node": "M101",
+            "total_impact": 5.0,
+            "affected_nodes_count": 6
+          },
+          {
+            "node": "M102",
+            "total_impact": 5.0,
+            "affected_nodes_count": 6
+          },
+          {
+            "node": "M103",
+            "total_impact": 5.0,
+            "affected_nodes_count": 6
+          },
+          {
+            "node": "M104",
+            "total_impact": 5.0,
+            "affected_nodes_count": 6
+          }
+        ],
+        "most_vulnerable_nodes": [
+          {
+            "node": "M103",
+            "cumulative_received_impact": 9.533673960370562
+          },
+          {
+            "node": "M105",
+            "cumulative_received_impact": 8.248087634723682
+          },
+          {
+            "node": "M106",
+            "cumulative_received_impact": 5.695048203107958
+          },
+          {
+            "node": "M102",
+            "cumulative_received_impact": 2.482234003872957
+          },
+          {
+            "node": "M104",
+            "cumulative_received_impact": 2.3380908630043122
+          }
+        ],
+        "cumulative_impact_total": 30.0
+      },
+      "scenarios": {
+        "node_attenuation": {
+          "description": "Attenuate outgoing propagation of top-1 source nodes by factor 0.0",
+          "target_nodes": [
+            "M106"
+          ],
+          "attenuation_factor": 0.0,
+          "simulation": {
+            "total_impact_per_source": {
+              "M101": 3.3323996425324083,
+              "M102": 3.4531715339752354,
+              "M103": 2.5832900933502296,
+              "M104": 3.0554588449080446,
+              "M105": 3.3348244304529384,
+              "M106": 0.0
+            },
+            "affected_nodes_count": {
+              "M101": 6,
+              "M102": 6,
+              "M103": 6,
+              "M104": 6,
+              "M105": 6,
+              "M106": 0
+            },
+            "most_influential_sources": [
+              {
+                "node": "M102",
+                "total_impact": 3.4531715339752354,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M105",
+                "total_impact": 3.3348244304529384,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M101",
+                "total_impact": 3.3323996425324083,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M104",
+                "total_impact": 3.0554588449080446,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M103",
+                "total_impact": 2.5832900933502296,
+                "affected_nodes_count": 6
+              }
+            ],
+            "most_vulnerable_nodes": [
+              {
+                "node": "M103",
+                "cumulative_received_impact": 5.238660963596298
+              },
+              {
+                "node": "M106",
+                "cumulative_received_impact": 3.7960153589168995
+              },
+              {
+                "node": "M105",
+                "cumulative_received_impact": 2.61768278150057
+              },
+              {
+                "node": "M102",
+                "cumulative_received_impact": 1.742981835942616
+              },
+              {
+                "node": "M104",
+                "cumulative_received_impact": 1.39103046530014
+              }
+            ],
+            "cumulative_impact_total": 15.759144545218856
+          },
+          "comparison": {
+            "baseline_cumulative_impact": 30.0,
+            "intervention_cumulative_impact": 15.759144545218856,
+            "impact_reduction_pct": 47.4695,
+            "baseline_avg_affected_nodes": 6.0,
+            "intervention_avg_affected_nodes": 5.0,
+            "affected_nodes_reduction": 1.0,
+            "influential_rank_changes": {
+              "M101": {
+                "baseline_rank": 2,
+                "intervention_rank": 3
+              },
+              "M106": {
+                "baseline_rank": 1,
+                "intervention_rank": null
+              },
+              "M102": {
+                "baseline_rank": 3,
+                "intervention_rank": 1
+              },
+              "M103": {
+                "baseline_rank": 4,
+                "intervention_rank": 5
+              },
+              "M104": {
+                "baseline_rank": 5,
+                "intervention_rank": 4
+              },
+              "M105": {
+                "baseline_rank": null,
+                "intervention_rank": 2
+              }
+            },
+            "vulnerable_rank_changes": {
+              "M106": {
+                "baseline_rank": 3,
+                "intervention_rank": 2
+              },
+              "M102": {
+                "baseline_rank": 4,
+                "intervention_rank": 4
+              },
+              "M103": {
+                "baseline_rank": 1,
+                "intervention_rank": 1
+              },
+              "M104": {
+                "baseline_rank": 5,
+                "intervention_rank": 5
+              },
+              "M105": {
+                "baseline_rank": 2,
+                "intervention_rank": 3
+              }
+            }
+          }
+        },
+        "edge_attenuation": {
+          "description": "Attenuate top-1 highest-weight edges by factor 0.0",
+          "target_edges": [
+            "M106\u2192M105"
+          ],
+          "attenuation_factor": 0.0,
+          "simulation": {
+            "total_impact_per_source": {
+              "M101": 5.000000000000001,
+              "M102": 4.999999999999999,
+              "M103": 4.999999999999999,
+              "M104": 5.0,
+              "M105": 5.000000000000001,
+              "M106": 5.0
+            },
+            "affected_nodes_count": {
+              "M101": 6,
+              "M102": 6,
+              "M103": 6,
+              "M104": 6,
+              "M105": 6,
+              "M106": 6
+            },
+            "most_influential_sources": [
+              {
+                "node": "M101",
+                "total_impact": 5.000000000000001,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M105",
+                "total_impact": 5.000000000000001,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M104",
+                "total_impact": 5.0,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M106",
+                "total_impact": 5.0,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M102",
+                "total_impact": 4.999999999999999,
+                "affected_nodes_count": 6
+              }
+            ],
+            "most_vulnerable_nodes": [
+              {
+                "node": "M103",
+                "cumulative_received_impact": 12.15722668576074
+              },
+              {
+                "node": "M106",
+                "cumulative_received_impact": 6.465313961656253
+              },
+              {
+                "node": "M105",
+                "cumulative_received_impact": 4.3855218170908135
+              },
+              {
+                "node": "M104",
+                "cumulative_received_impact": 2.8247425277888336
+              },
+              {
+                "node": "M102",
+                "cumulative_received_impact": 2.777320991529628
+              }
+            ],
+            "cumulative_impact_total": 29.999999999999996
+          },
+          "comparison": {
+            "baseline_cumulative_impact": 30.0,
+            "intervention_cumulative_impact": 29.999999999999996,
+            "impact_reduction_pct": 0.0,
+            "baseline_avg_affected_nodes": 6.0,
+            "intervention_avg_affected_nodes": 6.0,
+            "affected_nodes_reduction": 0.0,
+            "influential_rank_changes": {
+              "M101": {
+                "baseline_rank": 2,
+                "intervention_rank": 1
+              },
+              "M106": {
+                "baseline_rank": 1,
+                "intervention_rank": 4
+              },
+              "M102": {
+                "baseline_rank": 3,
+                "intervention_rank": 5
+              },
+              "M103": {
+                "baseline_rank": 4,
+                "intervention_rank": null
+              },
+              "M104": {
+                "baseline_rank": 5,
+                "intervention_rank": 3
+              },
+              "M105": {
+                "baseline_rank": null,
+                "intervention_rank": 2
+              }
+            },
+            "vulnerable_rank_changes": {
+              "M106": {
+                "baseline_rank": 3,
+                "intervention_rank": 2
+              },
+              "M102": {
+                "baseline_rank": 4,
+                "intervention_rank": 5
+              },
+              "M103": {
+                "baseline_rank": 1,
+                "intervention_rank": 1
+              },
+              "M104": {
+                "baseline_rank": 5,
+                "intervention_rank": 4
+              },
+              "M105": {
+                "baseline_rank": 2,
+                "intervention_rank": 3
+              }
+            }
+          }
+        },
+        "topk_source_control": {
+          "description": "Remove all outgoing edges from top-1 most influential sources",
+          "controlled_sources": [
+            "M106"
+          ],
+          "simulation": {
+            "total_impact_per_source": {
+              "M101": 3.3323996425324083,
+              "M102": 3.4531715339752354,
+              "M103": 2.5832900933502296,
+              "M104": 3.0554588449080446,
+              "M105": 3.3348244304529384,
+              "M106": 0.0
+            },
+            "affected_nodes_count": {
+              "M101": 6,
+              "M102": 6,
+              "M103": 6,
+              "M104": 6,
+              "M105": 6,
+              "M106": 0
+            },
+            "most_influential_sources": [
+              {
+                "node": "M102",
+                "total_impact": 3.4531715339752354,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M105",
+                "total_impact": 3.3348244304529384,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M101",
+                "total_impact": 3.3323996425324083,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M104",
+                "total_impact": 3.0554588449080446,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M103",
+                "total_impact": 2.5832900933502296,
+                "affected_nodes_count": 6
+              }
+            ],
+            "most_vulnerable_nodes": [
+              {
+                "node": "M103",
+                "cumulative_received_impact": 5.238660963596298
+              },
+              {
+                "node": "M106",
+                "cumulative_received_impact": 3.7960153589168995
+              },
+              {
+                "node": "M105",
+                "cumulative_received_impact": 2.61768278150057
+              },
+              {
+                "node": "M102",
+                "cumulative_received_impact": 1.742981835942616
+              },
+              {
+                "node": "M104",
+                "cumulative_received_impact": 1.39103046530014
+              }
+            ],
+            "cumulative_impact_total": 15.759144545218856
+          },
+          "comparison": {
+            "baseline_cumulative_impact": 30.0,
+            "intervention_cumulative_impact": 15.759144545218856,
+            "impact_reduction_pct": 47.4695,
+            "baseline_avg_affected_nodes": 6.0,
+            "intervention_avg_affected_nodes": 5.0,
+            "affected_nodes_reduction": 1.0,
+            "influential_rank_changes": {
+              "M101": {
+                "baseline_rank": 2,
+                "intervention_rank": 3
+              },
+              "M106": {
+                "baseline_rank": 1,
+                "intervention_rank": null
+              },
+              "M102": {
+                "baseline_rank": 3,
+                "intervention_rank": 1
+              },
+              "M103": {
+                "baseline_rank": 4,
+                "intervention_rank": 5
+              },
+              "M104": {
+                "baseline_rank": 5,
+                "intervention_rank": 4
+              },
+              "M105": {
+                "baseline_rank": null,
+                "intervention_rank": 2
+              }
+            },
+            "vulnerable_rank_changes": {
+              "M106": {
+                "baseline_rank": 3,
+                "intervention_rank": 2
+              },
+              "M102": {
+                "baseline_rank": 4,
+                "intervention_rank": 4
+              },
+              "M103": {
+                "baseline_rank": 1,
+                "intervention_rank": 1
+              },
+              "M104": {
+                "baseline_rank": 5,
+                "intervention_rank": 5
+              },
+              "M105": {
+                "baseline_rank": 2,
+                "intervention_rank": 3
+              }
+            }
+          }
+        }
+      },
+      "ranking": [
+        {
+          "scenario": "node_attenuation",
+          "impact_reduction_pct": 47.4695,
+          "affected_nodes_reduction": 1.0
+        },
+        {
+          "scenario": "topk_source_control",
+          "impact_reduction_pct": 47.4695,
+          "affected_nodes_reduction": 1.0
+        },
+        {
+          "scenario": "edge_attenuation",
+          "impact_reduction_pct": 0.0,
+          "affected_nodes_reduction": 0.0
+        }
+      ]
+    },
+    "med1": {
+      "baseline": {
+        "total_impact_per_source": {
+          "M101": 5.0,
+          "M102": 5.0,
+          "M103": 5.0,
+          "M104": 5.000000000000001,
+          "M105": 5.0,
+          "M106": 5.000000000000002
+        },
+        "affected_nodes_count": {
+          "M101": 6,
+          "M102": 6,
+          "M103": 6,
+          "M104": 6,
+          "M105": 6,
+          "M106": 6
+        },
+        "most_influential_sources": [
+          {
+            "node": "M106",
+            "total_impact": 5.000000000000002,
+            "affected_nodes_count": 6
+          },
+          {
+            "node": "M104",
+            "total_impact": 5.000000000000001,
+            "affected_nodes_count": 6
+          },
+          {
+            "node": "M101",
+            "total_impact": 5.0,
+            "affected_nodes_count": 6
+          },
+          {
+            "node": "M102",
+            "total_impact": 5.0,
+            "affected_nodes_count": 6
+          },
+          {
+            "node": "M103",
+            "total_impact": 5.0,
+            "affected_nodes_count": 6
+          }
+        ],
+        "most_vulnerable_nodes": [
+          {
+            "node": "M103",
+            "cumulative_received_impact": 10.240527662420426
+          },
+          {
+            "node": "M102",
+            "cumulative_received_impact": 7.325890150314712
+          },
+          {
+            "node": "M104",
+            "cumulative_received_impact": 6.596628968271251
+          },
+          {
+            "node": "M106",
+            "cumulative_received_impact": 2.9233994232332265
+          },
+          {
+            "node": "M101",
+            "cumulative_received_impact": 1.9111680827855113
+          }
+        ],
+        "cumulative_impact_total": 30.000000000000004
+      },
+      "scenarios": {
+        "node_attenuation": {
+          "description": "Attenuate outgoing propagation of top-1 source nodes by factor 0.0",
+          "target_nodes": [
+            "M106"
+          ],
+          "attenuation_factor": 0.0,
+          "simulation": {
+            "total_impact_per_source": {
+              "M101": 3.8487531518543374,
+              "M102": 3.880391356710224,
+              "M103": 4.352616232420706,
+              "M104": 4.320084155128018,
+              "M105": 2.9114331826950255,
+              "M106": 0.0
+            },
+            "affected_nodes_count": {
+              "M101": 6,
+              "M102": 6,
+              "M103": 6,
+              "M104": 6,
+              "M105": 6,
+              "M106": 0
+            },
+            "most_influential_sources": [
+              {
+                "node": "M103",
+                "total_impact": 4.352616232420706,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M104",
+                "total_impact": 4.320084155128018,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M102",
+                "total_impact": 3.880391356710224,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M101",
+                "total_impact": 3.8487531518543374,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M105",
+                "total_impact": 2.9114331826950255,
+                "affected_nodes_count": 6
+              }
+            ],
+            "most_vulnerable_nodes": [
+              {
+                "node": "M103",
+                "cumulative_received_impact": 6.385263739038368
+              },
+              {
+                "node": "M102",
+                "cumulative_received_impact": 4.978960907104517
+              },
+              {
+                "node": "M104",
+                "cumulative_received_impact": 4.2310467132287
+              },
+              {
+                "node": "M106",
+                "cumulative_received_impact": 2.2374738451193044
+              },
+              {
+                "node": "M101",
+                "cumulative_received_impact": 0.8729149333651879
+              }
+            ],
+            "cumulative_impact_total": 19.31327807880831
+          },
+          "comparison": {
+            "baseline_cumulative_impact": 30.000000000000004,
+            "intervention_cumulative_impact": 19.31327807880831,
+            "impact_reduction_pct": 35.6224,
+            "baseline_avg_affected_nodes": 6.0,
+            "intervention_avg_affected_nodes": 5.0,
+            "affected_nodes_reduction": 1.0,
+            "influential_rank_changes": {
+              "M101": {
+                "baseline_rank": 3,
+                "intervention_rank": 4
+              },
+              "M106": {
+                "baseline_rank": 1,
+                "intervention_rank": null
+              },
+              "M102": {
+                "baseline_rank": 4,
+                "intervention_rank": 3
+              },
+              "M103": {
+                "baseline_rank": 5,
+                "intervention_rank": 1
+              },
+              "M104": {
+                "baseline_rank": 2,
+                "intervention_rank": 2
+              },
+              "M105": {
+                "baseline_rank": null,
+                "intervention_rank": 5
+              }
+            },
+            "vulnerable_rank_changes": {
+              "M101": {
+                "baseline_rank": 5,
+                "intervention_rank": 5
+              },
+              "M106": {
+                "baseline_rank": 4,
+                "intervention_rank": 4
+              },
+              "M102": {
+                "baseline_rank": 2,
+                "intervention_rank": 2
+              },
+              "M103": {
+                "baseline_rank": 1,
+                "intervention_rank": 1
+              },
+              "M104": {
+                "baseline_rank": 3,
+                "intervention_rank": 3
+              }
+            }
+          }
+        },
+        "edge_attenuation": {
+          "description": "Attenuate top-1 highest-weight edges by factor 0.0",
+          "target_edges": [
+            "M102\u2192M103"
+          ],
+          "attenuation_factor": 0.0,
+          "simulation": {
+            "total_impact_per_source": {
+              "M101": 5.000000000000001,
+              "M102": 5.000000000000002,
+              "M103": 5.000000000000001,
+              "M104": 5.000000000000001,
+              "M105": 5.000000000000001,
+              "M106": 5.000000000000002
+            },
+            "affected_nodes_count": {
+              "M101": 6,
+              "M102": 6,
+              "M103": 6,
+              "M104": 6,
+              "M105": 6,
+              "M106": 6
+            },
+            "most_influential_sources": [
+              {
+                "node": "M102",
+                "total_impact": 5.000000000000002,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M106",
+                "total_impact": 5.000000000000002,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M101",
+                "total_impact": 5.000000000000001,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M103",
+                "total_impact": 5.000000000000001,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M104",
+                "total_impact": 5.000000000000001,
+                "affected_nodes_count": 6
+              }
+            ],
+            "most_vulnerable_nodes": [
+              {
+                "node": "M103",
+                "cumulative_received_impact": 7.989291971613063
+              },
+              {
+                "node": "M104",
+                "cumulative_received_impact": 7.67209781864408
+              },
+              {
+                "node": "M102",
+                "cumulative_received_impact": 6.70295035137644
+              },
+              {
+                "node": "M106",
+                "cumulative_received_impact": 4.215044524924844
+              },
+              {
+                "node": "M101",
+                "cumulative_received_impact": 2.284478316350125
+              }
+            ],
+            "cumulative_impact_total": 30.000000000000014
+          },
+          "comparison": {
+            "baseline_cumulative_impact": 30.000000000000004,
+            "intervention_cumulative_impact": 30.000000000000014,
+            "impact_reduction_pct": -0.0,
+            "baseline_avg_affected_nodes": 6.0,
+            "intervention_avg_affected_nodes": 6.0,
+            "affected_nodes_reduction": 0.0,
+            "influential_rank_changes": {
+              "M101": {
+                "baseline_rank": 3,
+                "intervention_rank": 3
+              },
+              "M106": {
+                "baseline_rank": 1,
+                "intervention_rank": 2
+              },
+              "M102": {
+                "baseline_rank": 4,
+                "intervention_rank": 1
+              },
+              "M103": {
+                "baseline_rank": 5,
+                "intervention_rank": 4
+              },
+              "M104": {
+                "baseline_rank": 2,
+                "intervention_rank": 5
+              }
+            },
+            "vulnerable_rank_changes": {
+              "M101": {
+                "baseline_rank": 5,
+                "intervention_rank": 5
+              },
+              "M106": {
+                "baseline_rank": 4,
+                "intervention_rank": 4
+              },
+              "M102": {
+                "baseline_rank": 2,
+                "intervention_rank": 3
+              },
+              "M103": {
+                "baseline_rank": 1,
+                "intervention_rank": 1
+              },
+              "M104": {
+                "baseline_rank": 3,
+                "intervention_rank": 2
+              }
+            }
+          }
+        },
+        "topk_source_control": {
+          "description": "Remove all outgoing edges from top-1 most influential sources",
+          "controlled_sources": [
+            "M106"
+          ],
+          "simulation": {
+            "total_impact_per_source": {
+              "M101": 3.8487531518543374,
+              "M102": 3.880391356710224,
+              "M103": 4.352616232420706,
+              "M104": 4.320084155128018,
+              "M105": 2.9114331826950255,
+              "M106": 0.0
+            },
+            "affected_nodes_count": {
+              "M101": 6,
+              "M102": 6,
+              "M103": 6,
+              "M104": 6,
+              "M105": 6,
+              "M106": 0
+            },
+            "most_influential_sources": [
+              {
+                "node": "M103",
+                "total_impact": 4.352616232420706,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M104",
+                "total_impact": 4.320084155128018,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M102",
+                "total_impact": 3.880391356710224,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M101",
+                "total_impact": 3.8487531518543374,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M105",
+                "total_impact": 2.9114331826950255,
+                "affected_nodes_count": 6
+              }
+            ],
+            "most_vulnerable_nodes": [
+              {
+                "node": "M103",
+                "cumulative_received_impact": 6.385263739038368
+              },
+              {
+                "node": "M102",
+                "cumulative_received_impact": 4.978960907104517
+              },
+              {
+                "node": "M104",
+                "cumulative_received_impact": 4.2310467132287
+              },
+              {
+                "node": "M106",
+                "cumulative_received_impact": 2.2374738451193044
+              },
+              {
+                "node": "M101",
+                "cumulative_received_impact": 0.8729149333651879
+              }
+            ],
+            "cumulative_impact_total": 19.31327807880831
+          },
+          "comparison": {
+            "baseline_cumulative_impact": 30.000000000000004,
+            "intervention_cumulative_impact": 19.31327807880831,
+            "impact_reduction_pct": 35.6224,
+            "baseline_avg_affected_nodes": 6.0,
+            "intervention_avg_affected_nodes": 5.0,
+            "affected_nodes_reduction": 1.0,
+            "influential_rank_changes": {
+              "M101": {
+                "baseline_rank": 3,
+                "intervention_rank": 4
+              },
+              "M106": {
+                "baseline_rank": 1,
+                "intervention_rank": null
+              },
+              "M102": {
+                "baseline_rank": 4,
+                "intervention_rank": 3
+              },
+              "M103": {
+                "baseline_rank": 5,
+                "intervention_rank": 1
+              },
+              "M104": {
+                "baseline_rank": 2,
+                "intervention_rank": 2
+              },
+              "M105": {
+                "baseline_rank": null,
+                "intervention_rank": 5
+              }
+            },
+            "vulnerable_rank_changes": {
+              "M101": {
+                "baseline_rank": 5,
+                "intervention_rank": 5
+              },
+              "M106": {
+                "baseline_rank": 4,
+                "intervention_rank": 4
+              },
+              "M102": {
+                "baseline_rank": 2,
+                "intervention_rank": 2
+              },
+              "M103": {
+                "baseline_rank": 1,
+                "intervention_rank": 1
+              },
+              "M104": {
+                "baseline_rank": 3,
+                "intervention_rank": 3
+              }
+            }
+          }
+        }
+      },
+      "ranking": [
+        {
+          "scenario": "node_attenuation",
+          "impact_reduction_pct": 35.6224,
+          "affected_nodes_reduction": 1.0
+        },
+        {
+          "scenario": "topk_source_control",
+          "impact_reduction_pct": 35.6224,
+          "affected_nodes_reduction": 1.0
+        },
+        {
+          "scenario": "edge_attenuation",
+          "impact_reduction_pct": -0.0,
+          "affected_nodes_reduction": 0.0
+        }
+      ]
+    },
+    "med2": {
+      "baseline": {
+        "total_impact_per_source": {
+          "M101": 4.999999999999999,
+          "M102": 4.999999999999998,
+          "M103": 4.999999999999998,
+          "M104": 4.999999999999998,
+          "M105": 5.0,
+          "M106": 4.999999999999999
+        },
+        "affected_nodes_count": {
+          "M101": 6,
+          "M102": 6,
+          "M103": 6,
+          "M104": 6,
+          "M105": 6,
+          "M106": 6
+        },
+        "most_influential_sources": [
+          {
+            "node": "M105",
+            "total_impact": 5.0,
+            "affected_nodes_count": 6
+          },
+          {
+            "node": "M101",
+            "total_impact": 4.999999999999999,
+            "affected_nodes_count": 6
+          },
+          {
+            "node": "M106",
+            "total_impact": 4.999999999999999,
+            "affected_nodes_count": 6
+          },
+          {
+            "node": "M102",
+            "total_impact": 4.999999999999998,
+            "affected_nodes_count": 6
+          },
+          {
+            "node": "M103",
+            "total_impact": 4.999999999999998,
+            "affected_nodes_count": 6
+          }
+        ],
+        "most_vulnerable_nodes": [
+          {
+            "node": "M103",
+            "cumulative_received_impact": 8.26329554878605
+          },
+          {
+            "node": "M102",
+            "cumulative_received_impact": 6.804383514234747
+          },
+          {
+            "node": "M104",
+            "cumulative_received_impact": 6.009288847878622
+          },
+          {
+            "node": "M106",
+            "cumulative_received_impact": 4.990204896277655
+          },
+          {
+            "node": "M105",
+            "cumulative_received_impact": 2.7869155842061284
+          }
+        ],
+        "cumulative_impact_total": 29.999999999999993
+      },
+      "scenarios": {
+        "node_attenuation": {
+          "description": "Attenuate outgoing propagation of top-1 source nodes by factor 0.0",
+          "target_nodes": [
+            "M105"
+          ],
+          "attenuation_factor": 0.0,
+          "simulation": {
+            "total_impact_per_source": {
+              "M101": 3.557792923644331,
+              "M102": 4.363999353646446,
+              "M103": 4.499484087674711,
+              "M104": 4.128313904896959,
+              "M105": 0.0,
+              "M106": 3.4880012187251648
+            },
+            "affected_nodes_count": {
+              "M101": 6,
+              "M102": 6,
+              "M103": 6,
+              "M104": 6,
+              "M105": 0,
+              "M106": 6
+            },
+            "most_influential_sources": [
+              {
+                "node": "M103",
+                "total_impact": 4.499484087674711,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M102",
+                "total_impact": 4.363999353646446,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M104",
+                "total_impact": 4.128313904896959,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M101",
+                "total_impact": 3.557792923644331,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M106",
+                "total_impact": 3.4880012187251648,
+                "affected_nodes_count": 6
+              }
+            ],
+            "most_vulnerable_nodes": [
+              {
+                "node": "M103",
+                "cumulative_received_impact": 5.130869457940716
+              },
+              {
+                "node": "M102",
+                "cumulative_received_impact": 4.815528232669479
+              },
+              {
+                "node": "M104",
+                "cumulative_received_impact": 4.432376629028922
+              },
+              {
+                "node": "M106",
+                "cumulative_received_impact": 2.804131026052811
+              },
+              {
+                "node": "M105",
+                "cumulative_received_impact": 2.0531336740318142
+              }
+            ],
+            "cumulative_impact_total": 20.037591488587612
+          },
+          "comparison": {
+            "baseline_cumulative_impact": 29.999999999999993,
+            "intervention_cumulative_impact": 20.037591488587612,
+            "impact_reduction_pct": 33.208,
+            "baseline_avg_affected_nodes": 6.0,
+            "intervention_avg_affected_nodes": 5.0,
+            "affected_nodes_reduction": 1.0,
+            "influential_rank_changes": {
+              "M101": {
+                "baseline_rank": 2,
+                "intervention_rank": 4
+              },
+              "M106": {
+                "baseline_rank": 3,
+                "intervention_rank": 5
+              },
+              "M102": {
+                "baseline_rank": 4,
+                "intervention_rank": 2
+              },
+              "M103": {
+                "baseline_rank": 5,
+                "intervention_rank": 1
+              },
+              "M104": {
+                "baseline_rank": null,
+                "intervention_rank": 3
+              },
+              "M105": {
+                "baseline_rank": 1,
+                "intervention_rank": null
+              }
+            },
+            "vulnerable_rank_changes": {
+              "M106": {
+                "baseline_rank": 4,
+                "intervention_rank": 4
+              },
+              "M102": {
+                "baseline_rank": 2,
+                "intervention_rank": 2
+              },
+              "M103": {
+                "baseline_rank": 1,
+                "intervention_rank": 1
+              },
+              "M104": {
+                "baseline_rank": 3,
+                "intervention_rank": 3
+              },
+              "M105": {
+                "baseline_rank": 5,
+                "intervention_rank": 5
+              }
+            }
+          }
+        },
+        "edge_attenuation": {
+          "description": "Attenuate top-1 highest-weight edges by factor 0.0",
+          "target_edges": [
+            "M103\u2192M102"
+          ],
+          "attenuation_factor": 0.0,
+          "simulation": {
+            "total_impact_per_source": {
+              "M101": 4.999999999999999,
+              "M102": 5.0,
+              "M103": 5.000000000000001,
+              "M104": 5.0,
+              "M105": 5.0,
+              "M106": 5.0
+            },
+            "affected_nodes_count": {
+              "M101": 6,
+              "M102": 6,
+              "M103": 6,
+              "M104": 6,
+              "M105": 6,
+              "M106": 6
+            },
+            "most_influential_sources": [
+              {
+                "node": "M103",
+                "total_impact": 5.000000000000001,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M102",
+                "total_impact": 5.0,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M104",
+                "total_impact": 5.0,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M105",
+                "total_impact": 5.0,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M106",
+                "total_impact": 5.0,
+                "affected_nodes_count": 6
+              }
+            ],
+            "most_vulnerable_nodes": [
+              {
+                "node": "M103",
+                "cumulative_received_impact": 8.641696361069789
+              },
+              {
+                "node": "M104",
+                "cumulative_received_impact": 8.00807487500158
+              },
+              {
+                "node": "M106",
+                "cumulative_received_impact": 5.107268328811856
+              },
+              {
+                "node": "M105",
+                "cumulative_received_impact": 3.424746250564277
+              },
+              {
+                "node": "M101",
+                "cumulative_received_impact": 2.6122347164373223
+              }
+            ],
+            "cumulative_impact_total": 30.0
+          },
+          "comparison": {
+            "baseline_cumulative_impact": 29.999999999999993,
+            "intervention_cumulative_impact": 30.0,
+            "impact_reduction_pct": -0.0,
+            "baseline_avg_affected_nodes": 6.0,
+            "intervention_avg_affected_nodes": 6.0,
+            "affected_nodes_reduction": 0.0,
+            "influential_rank_changes": {
+              "M101": {
+                "baseline_rank": 2,
+                "intervention_rank": null
+              },
+              "M106": {
+                "baseline_rank": 3,
+                "intervention_rank": 5
+              },
+              "M102": {
+                "baseline_rank": 4,
+                "intervention_rank": 2
+              },
+              "M103": {
+                "baseline_rank": 5,
+                "intervention_rank": 1
+              },
+              "M104": {
+                "baseline_rank": null,
+                "intervention_rank": 3
+              },
+              "M105": {
+                "baseline_rank": 1,
+                "intervention_rank": 4
+              }
+            },
+            "vulnerable_rank_changes": {
+              "M101": {
+                "baseline_rank": null,
+                "intervention_rank": 5
+              },
+              "M106": {
+                "baseline_rank": 4,
+                "intervention_rank": 3
+              },
+              "M102": {
+                "baseline_rank": 2,
+                "intervention_rank": null
+              },
+              "M103": {
+                "baseline_rank": 1,
+                "intervention_rank": 1
+              },
+              "M104": {
+                "baseline_rank": 3,
+                "intervention_rank": 2
+              },
+              "M105": {
+                "baseline_rank": 5,
+                "intervention_rank": 4
+              }
+            }
+          }
+        },
+        "topk_source_control": {
+          "description": "Remove all outgoing edges from top-1 most influential sources",
+          "controlled_sources": [
+            "M105"
+          ],
+          "simulation": {
+            "total_impact_per_source": {
+              "M101": 3.557792923644331,
+              "M102": 4.363999353646446,
+              "M103": 4.499484087674711,
+              "M104": 4.128313904896959,
+              "M105": 0.0,
+              "M106": 3.4880012187251648
+            },
+            "affected_nodes_count": {
+              "M101": 6,
+              "M102": 6,
+              "M103": 6,
+              "M104": 6,
+              "M105": 0,
+              "M106": 6
+            },
+            "most_influential_sources": [
+              {
+                "node": "M103",
+                "total_impact": 4.499484087674711,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M102",
+                "total_impact": 4.363999353646446,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M104",
+                "total_impact": 4.128313904896959,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M101",
+                "total_impact": 3.557792923644331,
+                "affected_nodes_count": 6
+              },
+              {
+                "node": "M106",
+                "total_impact": 3.4880012187251648,
+                "affected_nodes_count": 6
+              }
+            ],
+            "most_vulnerable_nodes": [
+              {
+                "node": "M103",
+                "cumulative_received_impact": 5.130869457940716
+              },
+              {
+                "node": "M102",
+                "cumulative_received_impact": 4.815528232669479
+              },
+              {
+                "node": "M104",
+                "cumulative_received_impact": 4.432376629028922
+              },
+              {
+                "node": "M106",
+                "cumulative_received_impact": 2.804131026052811
+              },
+              {
+                "node": "M105",
+                "cumulative_received_impact": 2.0531336740318142
+              }
+            ],
+            "cumulative_impact_total": 20.037591488587612
+          },
+          "comparison": {
+            "baseline_cumulative_impact": 29.999999999999993,
+            "intervention_cumulative_impact": 20.037591488587612,
+            "impact_reduction_pct": 33.208,
+            "baseline_avg_affected_nodes": 6.0,
+            "intervention_avg_affected_nodes": 5.0,
+            "affected_nodes_reduction": 1.0,
+            "influential_rank_changes": {
+              "M101": {
+                "baseline_rank": 2,
+                "intervention_rank": 4
+              },
+              "M106": {
+                "baseline_rank": 3,
+                "intervention_rank": 5
+              },
+              "M102": {
+                "baseline_rank": 4,
+                "intervention_rank": 2
+              },
+              "M103": {
+                "baseline_rank": 5,
+                "intervention_rank": 1
+              },
+              "M104": {
+                "baseline_rank": null,
+                "intervention_rank": 3
+              },
+              "M105": {
+                "baseline_rank": 1,
+                "intervention_rank": null
+              }
+            },
+            "vulnerable_rank_changes": {
+              "M106": {
+                "baseline_rank": 4,
+                "intervention_rank": 4
+              },
+              "M102": {
+                "baseline_rank": 2,
+                "intervention_rank": 2
+              },
+              "M103": {
+                "baseline_rank": 1,
+                "intervention_rank": 1
+              },
+              "M104": {
+                "baseline_rank": 3,
+                "intervention_rank": 3
+              },
+              "M105": {
+                "baseline_rank": 5,
+                "intervention_rank": 5
+              }
+            }
+          }
+        }
+      },
+      "ranking": [
+        {
+          "scenario": "node_attenuation",
+          "impact_reduction_pct": 33.208,
+          "affected_nodes_reduction": 1.0
+        },
+        {
+          "scenario": "topk_source_control",
+          "impact_reduction_pct": 33.208,
+          "affected_nodes_reduction": 1.0
+        },
+        {
+          "scenario": "edge_attenuation",
+          "impact_reduction_pct": -0.0,
+          "affected_nodes_reduction": 0.0
+        }
+      ]
+    }
+  },
+  "visualizations": {
+    "low1": "/home/runner/work/RiceEWS/RiceEWS/data/processed/module_05/intervention_graph_low1.html",
+    "low2": "/home/runner/work/RiceEWS/RiceEWS/data/processed/module_05/intervention_graph_low2.html",
+    "med1": "/home/runner/work/RiceEWS/RiceEWS/data/processed/module_05/intervention_graph_med1.html",
+    "med2": "/home/runner/work/RiceEWS/RiceEWS/data/processed/module_05/intervention_graph_med2.html"
+  }
+}
