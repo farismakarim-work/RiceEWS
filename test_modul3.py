@@ -7,6 +7,7 @@ Script ini menguji MODUL 3 dengan input dari output MODUL 2:
 - Membangun edge list per grade
 - Mengecek properti DAG/polytree sederhana
 - Menghasilkan output terpisah di data/processed/module_03
+- Memverifikasi output visualisasi HTML per grade
 
 Cara menjalankan:
     python test_modul3.py
@@ -60,9 +61,17 @@ def main() -> int:
     _check_non_empty(output_dir / "network_summary.csv", "network_summary.csv")
     _check_non_empty(output_dir / "network_summary.md", "network_summary.md")
 
-    # Per-grade leader outputs
-    for grade in results.get("grades", []):
+    # Per-grade leader outputs + visualization outputs
+    grades = results.get("grades", [])
+    for grade in grades:
         _check_non_empty(output_dir / f"market_leaders_{grade}.csv", f"market_leaders_{grade}.csv")
+        _check_non_empty(output_dir / f"network_graph_{grade}.html", f"network_graph_{grade}.html")
+
+    # Additional sanity check for result metadata
+    visualizations = results.get("visualizations", {})
+    for grade in grades:
+        if grade not in visualizations:
+            raise KeyError(f"✗ Missing visualization path in results for grade: {grade}")
 
     print("\nSummary:")
     for row in results.get("summary", []):
