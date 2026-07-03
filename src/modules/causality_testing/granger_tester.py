@@ -1,6 +1,6 @@
 """
-MODUL 2: Granger Causality Testing
-===================================
+MODUL 2: Granger Causality Testing dengan Visualization
+========================================================
 
 Pairwise Granger causality testing untuk mengidentifikasi market leaders.
 Reference: Kinnear & Mazumdar (2023) - Unconditional pairwise Granger tests
@@ -13,6 +13,7 @@ Features:
 - Configurable lag order (default: 4)
 - F-test untuk significance testing
 - Output: Multiple formats (JSON, CSV, Excel, NPZ, Markdown)
+- VISUALIZATION: Network graphs, heatmaps, bar charts (PNG, SVG, HTML)
 - Ready untuk network inference
 
 Pipeline:
@@ -22,7 +23,8 @@ Pipeline:
 4. Calculate F-statistics and p-values
 5. Identify significant causal relationships
 6. Generate causal matrix per grade
-7. Save in multiple output formats
+7. Create visualizations (network, heatmap, ranking charts)
+8. Save in multiple output formats
 """
 
 import pandas as pd
@@ -467,6 +469,41 @@ class GrangerCausalityTester:
         
         return matrix
     
+    def build_strength_matrix(self,
+                             grade_results: Dict,
+                             markets: List[int]) -> np.ndarray:
+        """
+        Build strength matrix menggunakan F-statistics.
+        
+        Parameters:
+        -----------
+        grade_results : Dict
+        markets : List[int]
+        
+        Returns:
+        --------
+        np.ndarray
+            Strength matrix dengan F-statistics as weights
+        """
+        
+        n = len(markets)
+        matrix = np.zeros((n, n))
+        
+        market_idx = {m: i for i, m in enumerate(markets)}
+        
+        for key, result in grade_results.items():
+            if result.get('granger_causes', False):
+                parts = key.split('→')
+                x_market = int(parts[0][1:])
+                y_market = int(parts[1][1:])
+                
+                i = market_idx[y_market]
+                j = market_idx[x_market]
+                f_stat = result.get('f_statistic', 1)
+                matrix[i, j] = f_stat if f_stat != np.inf else 100
+        
+        return matrix
+    
     def get_market_out_degree(self,
                              causal_matrix: np.ndarray,
                              markets: List[int]) -> Dict:
@@ -724,10 +761,263 @@ class GrangerCausalityTester:
         
         return output_path
     
+    def visualize_network_graph(self,
+                               all_results: Dict,
+                               output_dir: str,
+                               markets: List[int],
+                               format: str = 'html') -> List[Path]:
+        """
+        Create interactive network graph visualization per grade.
+        
+        Parameters:
+        -----------
+        all_results : Dict
+        output_dir : str
+        markets : List[int]
+        format : str
+            'html' for interactive, 'png'/'svg' for static
+            
+        Returns:
+        --------
+        List[Path]
+            Paths ke saved visualizations
+        """
+        
+        try:
+            import plotly.graph_objects as go
+            import plotly.io as pio
+        except ImportError:
+            if self.verbose:
+                print("Warning: plotly not installed, skipping network visualization")
+            return []
+        
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        saved_files = []
+        
+        for grade, grade_data in all_results.items():
+            # Extract relationships
+            causal_matrix = np.array(grade_data['causal_matrix'])
+            out_degrees = grade_data['out_degrees']
+            
+            # Create edges
+            edges_x = []
+            edges_y = []
+            edge_weights = []
+            
+            for i, market_to in enumerate(markets):
+                for j, market_from in enumerate(markets):
+                    if causal_matrix[i, j] > 0:
+                        # Get F-statistic for strength
+                        rel_key = f"M{market_from}→M{market_to}"
+                        f_stat = grade_data['pairwise_tests'][rel_key].get('f_statistic', 1)
+                        edge_weights.append(f_stat if f_stat != np.inf else 100)
+            
+            # Create node positions (circular layout)
+            n_markets = len(markets)
+            pos_x = [np.cos(2 * np.pi * i / n_markets) for i in range(n_markets)]
+            pos_y = [np.sin(2 * np.pi * i / n_markets) for i in range(n_markets)]
+            
+            # Build edge list for plotting
+            edge_trace_x = []
+            edge_trace_y = []
+            
+            for i, market_to in enumerate(markets):
+                for j, market_from in enumerate(markets):
+                    if causal_matrix[i, j] > 0:
+                        edge_trace_x.extend([pos_x[j], pos_x[i], None])
+                        edge_trace_y.extend([pos_y[j], pos_y[i], None])
+            
+            # Create edge trace
+            edge_trace = go.Scatter(
+                x=edge_trace_x, y=edge_trace_y,
+                mode='lines',
+                line=dict(width=0.5, color='#888'),
+                hoverinfo='none',
+                showlegend=False
+            )
+            
+            # Create node trace
+            node_trace = go.Scatter(
+                x=pos_x, y=pos_y,
+                mode='markers+text',
+                text=[f"M{m}" for m in markets],
+                textposition="top center",
+                hoverinfo='text',
+                hovertext=[f"Market {m}<br>Influence: {out_degrees[m]}" for m in markets],
+                marker=dict(
+                    showscale=True,
+                    color=[out_degrees[m] for m in markets],
+                    size=[30 + out_degrees[m] * 10 for m in markets],
+                    colorscale='YlOrRd',
+                    line_width=2,
+                    colorbar=dict(
+                        thickness=15,
+                        title='Out-Degree<br>(Influence)',
+                        xanchor='left',
+                        titleside='right'
+                    )
+                )
+            )
+            
+            # Create figure
+            fig = go.Figure(data=[edge_trace, node_trace],
+                          layout=go.Layout(
+                              title=f"Causal Network - Grade: {grade}",
+                              showlegend=False,
+                              hovermode='closest',
+                              margin=dict(b=20,l=5,r=5,t=40),
+                              xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                              yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
+                          ))
+            
+            # Save HTML
+            html_path = output_dir / f"network_graph_{grade}.html"
+            fig.write_html(str(html_path))
+            saved_files.append(html_path)
+            
+            if self.verbose:
+                print(f"✓ Saved network graph (HTML) to: {html_path}")
+        
+        return saved_files
+    
+    def visualize_heatmap(self,
+                         all_results: Dict,
+                         output_dir: str,
+                         markets: List[int]) -> List[Path]:
+        """
+        Create heatmap visualization per grade.
+        
+        Parameters:
+        -----------
+        all_results : Dict
+        output_dir : str
+        markets : List[int]
+        
+        Returns:
+        --------
+        List[Path]
+        """
+        
+        try:
+            import plotly.graph_objects as go
+        except ImportError:
+            if self.verbose:
+                print("Warning: plotly not installed, skipping heatmap visualization")
+            return []
+        
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        saved_files = []
+        
+        for grade, grade_data in all_results.items():
+            causal_matrix = np.array(grade_data['causal_matrix'])
+            
+            # Create heatmap
+            fig = go.Figure(data=go.Heatmap(
+                z=causal_matrix,
+                x=[f"M{m}" for m in markets],
+                y=[f"M{m}" for m in markets],
+                colorscale='Blues',
+                text=causal_matrix,
+                texttemplate='%{text}',
+                textfont={"size": 12},
+                colorbar=dict(title="Causal<br>Relationship")
+            ))
+            
+            fig.update_layout(
+                title=f"Causal Adjacency Matrix - Grade: {grade}",
+                xaxis_title="Source Market (causes →)",
+                yaxis_title="Target Market (← affected)",
+                height=600,
+                width=700
+            )
+            
+            # Save HTML
+            html_path = output_dir / f"heatmap_{grade}.html"
+            fig.write_html(str(html_path))
+            saved_files.append(html_path)
+            
+            if self.verbose:
+                print(f"✓ Saved heatmap (HTML) to: {html_path}")
+        
+        return saved_files
+    
+    def visualize_rankings(self,
+                          all_results: Dict,
+                          output_dir: str) -> List[Path]:
+        """
+        Create bar chart for market leaders ranking per grade.
+        
+        Parameters:
+        -----------
+        all_results : Dict
+        output_dir : str
+        
+        Returns:
+        --------
+        List[Path]
+        """
+        
+        try:
+            import plotly.graph_objects as go
+        except ImportError:
+            if self.verbose:
+                print("Warning: plotly not installed, skipping ranking visualization")
+            return []
+        
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        saved_files = []
+        
+        for grade, grade_data in all_results.items():
+            out_degrees = grade_data['out_degrees']
+            in_degrees = grade_data['in_degrees']
+            markets = sorted(out_degrees.keys())
+            
+            # Create figure with secondary y-axis
+            fig = go.Figure()
+            
+            # Add out-degree bars
+            fig.add_trace(go.Bar(
+                x=[f"M{m}" for m in markets],
+                y=[out_degrees[m] for m in markets],
+                name='Out-Degree (Influence)',
+                marker_color='lightblue'
+            ))
+            
+            # Add in-degree bars
+            fig.add_trace(go.Bar(
+                x=[f"M{m}" for m in markets],
+                y=[in_degrees[m] for m in markets],
+                name='In-Degree (Susceptibility)',
+                marker_color='lightcoral'
+            ))
+            
+            fig.update_layout(
+                title=f"Market Leaders Ranking - Grade: {grade}",
+                xaxis_title="Market",
+                yaxis_title="Degree Score",
+                barmode='group',
+                height=500,
+                width=900
+            )
+            
+            # Save HTML
+            html_path = output_dir / f"ranking_{grade}.html"
+            fig.write_html(str(html_path))
+            saved_files.append(html_path)
+            
+            if self.verbose:
+                print(f"✓ Saved ranking chart (HTML) to: {html_path}")
+        
+        return saved_files
+    
     def save_results_all_formats(self,
                                 all_results: Dict,
-                                output_dir: str) -> Dict[str, Path]:
-        """Save results in ALL formats (JSON, CSV, Excel, NPZ, Markdown)."""
+                                output_dir: str,
+                                markets: List[int]) -> Dict[str, Path]:
+        """Save results in ALL formats (JSON, CSV, Excel, NPZ, Markdown, Visualizations)."""
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         
@@ -757,6 +1047,20 @@ class GrangerCausalityTester:
         self.save_as_markdown(all_results, str(md_path))
         saved_paths['markdown'] = md_path
         
+        # VISUALIZATIONS
+        print(f"\n{'='*70}")
+        print("GENERATING VISUALIZATIONS")
+        print(f"{'='*70}")
+        
+        network_graphs = self.visualize_network_graph(all_results, str(output_dir), markets, format='html')
+        saved_paths['network_graphs'] = network_graphs
+        
+        heatmaps = self.visualize_heatmap(all_results, str(output_dir), markets)
+        saved_paths['heatmaps'] = heatmaps
+        
+        rankings = self.visualize_rankings(all_results, str(output_dir))
+        saved_paths['rankings'] = rankings
+        
         return saved_paths
 
 
@@ -764,7 +1068,7 @@ def run_full_granger_analysis(input_file: str,
                              output_dir: str,
                              config: Dict = None) -> Dict:
     """
-    Run complete Granger causality analysis.
+    Run complete Granger causality analysis dengan visualizations.
     
     Parameters:
     -----------
@@ -833,12 +1137,12 @@ def run_full_granger_analysis(input_file: str,
             for i, market in enumerate(market_leaders, 1):
                 print(f"  {i}. Market {market} (out-degree: {out_degrees[market]})")
     
-    # Save results in all formats
+    # Save results in all formats INCLUDING visualizations
     print(f"\n{'='*70}")
-    print("SAVING RESULTS IN MULTIPLE FORMATS")
+    print("SAVING RESULTS IN MULTIPLE FORMATS + VISUALIZATIONS")
     print(f"{'='*70}")
     
-    saved_paths = tester.save_results_all_formats(all_results, output_dir)
+    saved_paths = tester.save_results_all_formats(all_results, output_dir, markets)
     
     print(f"\n{'='*70}")
     print("GRANGER CAUSALITY ANALYSIS COMPLETE")
