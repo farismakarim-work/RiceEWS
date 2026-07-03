@@ -151,7 +151,7 @@ def _save_html_visualization(grade: str, nodes: List[str], edge_df: pd.DataFrame
             edge_df["source"].isin(node_set) & edge_df["target"].isin(node_set)
         ].copy()
 
-    edge_count = int(len(edge_df))
+    edge_count = len(edge_df)
     title = f"Module 3 Network Graph - {grade} | Nodes={node_count} | Edges={edge_count}"
     debug_text = f"Debug Metadata | grade={grade} | node_count={node_count} | edge_count={edge_count}"
 
@@ -239,7 +239,7 @@ def _save_html_visualization(grade: str, nodes: List[str], edge_df: pd.DataFrame
 
     except Exception:
         # Fallback minimal HTML, tetap memenuhi syarat minimal satu output visualisasi
-        nodes_html = "".join([f"<li>{nd}</li>" for nd in nodes]) or "<li>(no nodes)</li>"
+        nodes_html = "".join([f"<li>{node}</li>" for node in nodes]) or "<li>(no nodes)</li>"
         edges_html = ""
         if edge_df.empty:
             edges_html = "<li>(no significant edges)</li>"
