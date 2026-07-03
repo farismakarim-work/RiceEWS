@@ -3,7 +3,8 @@ MODUL 1: Data Preprocessing, Stationarity & Detrending
 ========================================================
 
 Complete data preprocessing pipeline untuk pilot dataset rice market.
-Designed untuk: Excel format, multiple grades, multiple markets, separate analysis per grade.
+Includes: loading, cleaning, outlier removal, log transformation, detrending, 
+differencing, stationarity testing.
 
 Dataset structure: Date, Market_id, Grade, Price (41,016 records)
 - 6 markets (101-106)
@@ -13,6 +14,7 @@ Dataset structure: Date, Market_id, Grade, Price (41,016 records)
 Features:
 - Load and validate pilot dataset
 - Handle missing values and outliers
+- Log transformation untuk stabilize variance
 - Detrending untuk remove trend component
 - Differencing untuk achieve stationarity
 - Standardization untuk normalize
@@ -53,7 +55,6 @@ class DataPreprocessor:
         self.verbose = verbose
         self.logger = logger
         self.processing_report = {}
-        self.grades_processed = []
     
     def load_pilot_data(self, filepath: str) -> pd.DataFrame:
         """
@@ -303,9 +304,78 @@ class DataPreprocessor:
         
         return df
     
+    def apply_log_transformation(self,
+                                df: pd.DataFrame,
+                                price_col: str = 'price',
+                                market_col: str = 'market_id',
+                                grade_col: str = 'grade',
+                                apply: bool = True) -> pd.DataFrame:
+        """
+        Apply natural log transformation untuk stabilize variance.
+        
+        Log transformation converts multiplicative errors ke additive errors,
+        important untuk financial/commodity price data.
+        
+        Formula: price_log = ln(price)
+        
+        After differencing: log_return = ln(price_t) - ln(price_t-1)
+        
+        Parameters:
+        -----------
+        df : pd.DataFrame
+        price_col : str
+            Original price column
+        market_col : str
+        grade_col : str
+        apply : bool
+            If False, skip log transformation
+            
+        Returns:
+        --------
+        pd.DataFrame dengan kolom 'price_log'
+        """
+        
+        df = df.copy()
+        
+        if not apply:
+            df['price_log'] = df[price_col].copy()
+            if self.verbose:
+                print(f"\n{'='*70}")
+                print(f"LOG TRANSFORMATION (SKIPPED)")
+                print(f"{'='*70}")
+            return df
+        
+        if self.verbose:
+            print(f"\n{'='*70}")
+            print(f"LOG TRANSFORMATION")
+            print(f"{'='*70}")
+            print(f"Applying: price_log = ln(price)")
+        
+        # Check for non-positive values
+        if (df[price_col] <= 0).any():
+            self.logger.warning("Found non-positive prices, cannot apply log transformation")
+            df['price_log'] = df[price_col].copy()
+            return df
+        
+        # Apply log transformation
+        df['price_log'] = np.log(df[price_col])
+        
+        if self.verbose:
+            print(f"✓ Log transformation applied to all records")
+            print(f"  Original range: {df[price_col].min():.2f} to {df[price_col].max():.2f}")
+            print(f"  Log range: {df['price_log'].min():.4f} to {df['price_log'].max():.4f}")
+        
+        self.processing_report['log_transformation'] = {
+            'applied': True,
+            'original_range': (float(df[price_col].min()), float(df[price_col].max())),
+            'log_range': (float(df['price_log'].min()), float(df['price_log'].max()))
+        }
+        
+        return df
+    
     def detrend_data(self,
                     df: pd.DataFrame,
-                    price_col: str = 'price',
+                    price_col: str = 'price_log',
                     market_col: str = 'market_id',
                     grade_col: str = 'grade',
                     date_col: str = 'date',
@@ -317,6 +387,7 @@ class DataPreprocessor:
         -----------
         df : pd.DataFrame
         price_col : str
+            Column to detrend (usually 'price_log' after log transformation)
         market_col : str
         grade_col : str
         date_col : str
@@ -393,6 +464,9 @@ class DataPreprocessor:
                           order: int = 1) -> pd.DataFrame:
         """
         Apply differencing untuk achieve stationarity.
+        
+        After log transformation, differencing creates log returns:
+            log_return = log_price(t) - log_price(t-1)
         
         Parameters:
         -----------
@@ -700,6 +774,16 @@ def run_full_preprocessing_pipeline(input_file: str,
     """
     Run complete preprocessing pipeline untuk pilot dataset.
     
+    Pipeline stages:
+    1. Load data
+    2. Handle missing values
+    3. Remove outliers
+    4. Log transformation (untuk stabilize variance)
+    5. Detrending
+    6. Differencing
+    7. Standardization
+    8. Stationarity testing
+    
     Parameters:
     -----------
     input_file : str
@@ -721,6 +805,7 @@ def run_full_preprocessing_pipeline(input_file: str,
             'missing_method': 'interpolate',
             'outlier_method': 'iqr',
             'outlier_threshold': 1.5,
+            'log_transform': True,
             'detrend_method': 'linear',
             'differencing_order': 1,
             'standardize_method': 'zscore',
@@ -741,6 +826,7 @@ def run_full_preprocessing_pipeline(input_file: str,
     )
     
     # Transform
+    df = preprocessor.apply_log_transformation(df, apply=config.get('log_transform', True))
     df = preprocessor.detrend_data(df, method=config['detrend_method'])
     df = preprocessor.apply_differencing(df, order=config['differencing_order'])
     df = preprocessor.standardize_data(df, method=config['standardize_method'])
