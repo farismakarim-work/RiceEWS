@@ -12,7 +12,7 @@ Features:
 - Separate analysis per grade (low1, low2, med1, med2)
 - Configurable lag order (default: 4)
 - F-test untuk significance testing
-- Output: Causal relationships per grade
+- Output: Multiple formats (JSON, CSV, Excel, NPZ, Markdown)
 - Ready untuk network inference
 
 Pipeline:
@@ -22,6 +22,7 @@ Pipeline:
 4. Calculate F-statistics and p-values
 5. Identify significant causal relationships
 6. Generate causal matrix per grade
+7. Save in multiple output formats
 """
 
 import pandas as pd
@@ -466,47 +467,6 @@ class GrangerCausalityTester:
         
         return matrix
     
-    def build_adjacency_matrix(self,
-                              grade_results: Dict,
-                              markets: List[int],
-                              strength: bool = False) -> np.ndarray:
-        """
-        Build adjacency matrix dengan optional strength weights.
-        
-        Parameters:
-        -----------
-        grade_results : Dict
-        markets : List[int]
-        strength : bool
-            If True, use F-statistic as weight; if False, binary
-            
-        Returns:
-        --------
-        np.ndarray
-            Adjacency matrix (n_markets x n_markets)
-        """
-        
-        n = len(markets)
-        matrix = np.zeros((n, n))
-        
-        market_idx = {m: i for i, m in enumerate(markets)}
-        
-        for key, result in grade_results.items():
-            if result.get('granger_causes', False):
-                parts = key.split('→')
-                x_market = int(parts[0][1:])
-                y_market = int(parts[1][1:])
-                
-                i = market_idx[y_market]
-                j = market_idx[x_market]
-                
-                if strength:
-                    matrix[i, j] = result.get('f_statistic', 1)
-                else:
-                    matrix[i, j] = 1
-        
-        return matrix
-    
     def get_market_out_degree(self,
                              causal_matrix: np.ndarray,
                              markets: List[int]) -> Dict:
@@ -582,46 +542,226 @@ class GrangerCausalityTester:
         
         return [m for m, _ in ranked_markets]
     
-    def get_testing_report(self) -> Dict:
-        """Generate testing summary report."""
-        return self.testing_report
-    
-    def save_results(self,
+    def save_as_json(self,
                     all_results: Dict,
-                    output_path: str,
-                    include_report: bool = True) -> Path:
-        """
-        Save Granger testing results.
-        
-        Parameters:
-        -----------
-        all_results : Dict
-            Complete results dictionary (per grade)
-        output_path : str
-            Path untuk output file
-        include_report : bool
-            Save detailed report
-            
-        Returns:
-        --------
-        Path
-        """
-        
+                    output_path: str) -> Path:
+        """Save results as JSON."""
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
-        # Save results as JSON
         with open(output_path, 'w') as f:
             json.dump(all_results, f, indent=2, default=str)
         
         if self.verbose:
-            print(f"\n✓ Saved Granger results to: {output_path}")
+            print(f"✓ Saved JSON to: {output_path}")
         
         return output_path
+    
+    def save_as_csv(self,
+                   all_results: Dict,
+                   output_dir: str) -> List[Path]:
+        """Save results as CSV files (one per grade)."""
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        saved_files = []
+        
+        for grade, grade_data in all_results.items():
+            # Pairwise results CSV
+            pairwise_data = []
+            for relationship, test_result in grade_data['pairwise_tests'].items():
+                pairwise_data.append({
+                    'Grade': grade,
+                    'Relationship': relationship,
+                    'F_Statistic': test_result.get('f_statistic'),
+                    'P_Value': test_result.get('p_value'),
+                    'Granger_Causes': test_result.get('granger_causes', False),
+                    'Lag_Order': test_result.get('lag_order'),
+                    'N_Observations': test_result.get('n_observations'),
+                    'R2_Restricted': test_result.get('r2_restricted'),
+                    'R2_Augmented': test_result.get('r2_augmented')
+                })
+            
+            df_pairwise = pd.DataFrame(pairwise_data)
+            pairwise_path = output_dir / f"granger_pairwise_{grade}.csv"
+            df_pairwise.to_csv(pairwise_path, index=False)
+            saved_files.append(pairwise_path)
+            
+            if self.verbose:
+                print(f"✓ Saved pairwise CSV to: {pairwise_path}")
+        
+        return saved_files
+    
+    def save_as_excel(self,
+                     all_results: Dict,
+                     output_path: str) -> Path:
+        """Save results as Excel with multiple sheets."""
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        try:
+            import openpyxl
+        except ImportError:
+            if self.verbose:
+                print("Warning: openpyxl not installed, skipping Excel export")
+            return None
+        
+        with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
+            # Summary sheet
+            summary_data = []
+            for grade, grade_data in all_results.items():
+                out_degrees = grade_data['out_degrees']
+                in_degrees = grade_data['in_degrees']
+                leaders = grade_data['market_leaders']
+                
+                for market in sorted(out_degrees.keys()):
+                    summary_data.append({
+                        'Grade': grade,
+                        'Market': market,
+                        'Out_Degree_Influence': out_degrees[market],
+                        'In_Degree_Susceptibility': in_degrees[market],
+                        'Leader_Rank': leaders.index(market) + 1 if market in leaders else None
+                    })
+            
+            df_summary = pd.DataFrame(summary_data)
+            df_summary.to_excel(writer, sheet_name='Summary', index=False)
+            
+            # Pairwise results per grade
+            for grade, grade_data in all_results.items():
+                pairwise_data = []
+                for relationship, test_result in grade_data['pairwise_tests'].items():
+                    pairwise_data.append({
+                        'Relationship': relationship,
+                        'F_Statistic': test_result.get('f_statistic'),
+                        'P_Value': test_result.get('p_value'),
+                        'Granger_Causes': test_result.get('granger_causes', False),
+                        'Lag_Order': test_result.get('lag_order'),
+                        'N_Obs': test_result.get('n_observations')
+                    })
+                
+                df_pairwise = pd.DataFrame(pairwise_data)
+                sheet_name = f"Pairwise_{grade}"[:31]  # Excel sheet name limit
+                df_pairwise.to_excel(writer, sheet_name=sheet_name, index=False)
+            
+            # Causal matrices per grade
+            for grade, grade_data in all_results.items():
+                causal_matrix = np.array(grade_data['causal_matrix'])
+                df_matrix = pd.DataFrame(causal_matrix)
+                sheet_name = f"Matrix_{grade}"[:31]
+                df_matrix.to_excel(writer, sheet_name=sheet_name, index=True)
+        
+        if self.verbose:
+            print(f"✓ Saved Excel to: {output_path}")
+        
+        return output_path
+    
+    def save_as_npz(self,
+                   all_results: Dict,
+                   output_path: str) -> Path:
+        """Save causal matrices as NumPy binary format."""
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        matrices_dict = {}
+        for grade, grade_data in all_results.items():
+            matrices_dict[f"{grade}_matrix"] = np.array(grade_data['causal_matrix'])
+        
+        np.savez(output_path, **matrices_dict)
+        
+        if self.verbose:
+            print(f"✓ Saved NPZ to: {output_path}")
+        
+        return output_path
+    
+    def save_as_markdown(self,
+                        all_results: Dict,
+                        output_path: str) -> Path:
+        """Save results as Markdown report."""
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        with open(output_path, 'w') as f:
+            f.write("# Granger Causality Testing Results\n\n")
+            f.write("## Summary\n\n")
+            
+            for grade, grade_data in all_results.items():
+                f.write(f"### Grade: {grade}\n\n")
+                
+                # Market leaders
+                leaders = grade_data['market_leaders']
+                out_degrees = grade_data['out_degrees']
+                in_degrees = grade_data['in_degrees']
+                
+                f.write("#### Market Leaders (by Influence)\n\n")
+                f.write("| Rank | Market | Out-Degree | In-Degree |\n")
+                f.write("|------|--------|------------|----------|\n")
+                
+                for i, market in enumerate(leaders, 1):
+                    f.write(f"| {i} | M{market} | {out_degrees[market]} | {in_degrees[market]} |\n")
+                
+                # Significant relationships
+                f.write("\n#### Significant Causal Relationships\n\n")
+                significant = [(k, v) for k, v in grade_data['pairwise_tests'].items() 
+                              if v.get('granger_causes', False)]
+                significant = sorted(significant, 
+                                    key=lambda x: x[1].get('f_statistic', 0), 
+                                    reverse=True)
+                
+                if significant:
+                    f.write("| Relationship | F-Statistic | P-Value | Lag |\n")
+                    f.write("|---|---|---|---|\n")
+                    for relationship, test_result in significant:
+                        f_stat = test_result.get('f_statistic', '-')
+                        p_val = test_result.get('p_value', '-')
+                        lag = test_result.get('lag_order', '-')
+                        f.write(f"| {relationship} | {f_stat:.4f} | {p_val:.4f} | {lag} |\n")
+                else:
+                    f.write("No significant relationships found.\n")
+                
+                f.write("\n")
+        
+        if self.verbose:
+            print(f"✓ Saved Markdown to: {output_path}")
+        
+        return output_path
+    
+    def save_results_all_formats(self,
+                                all_results: Dict,
+                                output_dir: str) -> Dict[str, Path]:
+        """Save results in ALL formats (JSON, CSV, Excel, NPZ, Markdown)."""
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        saved_paths = {}
+        
+        # JSON
+        json_path = output_dir / "granger_results.json"
+        self.save_as_json(all_results, str(json_path))
+        saved_paths['json'] = json_path
+        
+        # CSV
+        csv_paths = self.save_as_csv(all_results, str(output_dir))
+        saved_paths['csv'] = csv_paths
+        
+        # Excel
+        excel_path = output_dir / "granger_results.xlsx"
+        self.save_as_excel(all_results, str(excel_path))
+        saved_paths['excel'] = excel_path
+        
+        # NPZ
+        npz_path = output_dir / "granger_matrices.npz"
+        self.save_as_npz(all_results, str(npz_path))
+        saved_paths['npz'] = npz_path
+        
+        # Markdown
+        md_path = output_dir / "granger_results.md"
+        self.save_as_markdown(all_results, str(md_path))
+        saved_paths['markdown'] = md_path
+        
+        return saved_paths
 
 
 def run_full_granger_analysis(input_file: str,
-                             output_file: str,
+                             output_dir: str,
                              config: Dict = None) -> Dict:
     """
     Run complete Granger causality analysis.
@@ -630,8 +770,8 @@ def run_full_granger_analysis(input_file: str,
     -----------
     input_file : str
         Path to preprocessed CSV (dari MODUL 1)
-    output_file : str
-        Path to save results JSON
+    output_dir : str
+        Directory to save results in multiple formats
     config : Dict, optional
         Configuration (lag_order, etc.)
         
@@ -693,8 +833,12 @@ def run_full_granger_analysis(input_file: str,
             for i, market in enumerate(market_leaders, 1):
                 print(f"  {i}. Market {market} (out-degree: {out_degrees[market]})")
     
-    # Save results
-    tester.save_results(all_results, output_file)
+    # Save results in all formats
+    print(f"\n{'='*70}")
+    print("SAVING RESULTS IN MULTIPLE FORMATS")
+    print(f"{'='*70}")
+    
+    saved_paths = tester.save_results_all_formats(all_results, output_dir)
     
     print(f"\n{'='*70}")
     print("GRANGER CAUSALITY ANALYSIS COMPLETE")
@@ -707,12 +851,12 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     
     input_file = "data/processed/preprocessed_pilot_data.csv"
-    output_file = "data/processed/granger_results.json"
+    output_dir = "data/processed"
     
     try:
         results = run_full_granger_analysis(
             input_file,
-            output_file,
+            output_dir,
             config={
                 'lag_order': 4,
                 'price_col': 'price_diff',
@@ -721,7 +865,6 @@ if __name__ == "__main__":
         )
         
         print(f"\nAnalysis complete!")
-        print(f"Results saved to: {output_file}")
         
     except FileNotFoundError as e:
         print(f"Error: {e}")
