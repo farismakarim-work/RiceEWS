@@ -28,21 +28,18 @@ def main() -> None:
     _assert_exists(preprocessed_csv, "MODUL 1 output CSV")
 
     # Run MODUL 2 pipeline
-    # Note: this import assumes your module already exists at this path.
-    from src.modules.causality_testing.granger_tester import run_granger_pipeline
+    # Aligned with current implementation function name.
+    from src.modules.causality_testing.granger_tester import run_full_granger_analysis
 
     print("\nRunning MODUL 2 pipeline...")
-    run_granger_pipeline(
+    run_full_granger_analysis(
         input_file=str(preprocessed_csv),
         output_dir=str(processed_dir),
-        save_json=True,
-        save_csv=True,
-        save_excel=True,
-        save_npz=True,
-        save_markdown=True,
-        save_plots=True,
-        alpha=0.05,
-        max_lag=4,
+        config={
+            "lag_order": 4,
+            "price_col": "price_diff",
+            "significance_level": 0.05,
+        },
     )
 
     print("\nPipeline finished. Verifying outputs...")
