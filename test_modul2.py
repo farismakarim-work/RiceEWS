@@ -7,7 +7,14 @@ Script ini mengtest functionality dari MODUL 2:
 - Perform pairwise Granger causality tests
 - Build causal matrices per grade
 - Identify market leaders
-- Generate output
+- Generate output dalam MULTIPLE formats
+
+Output Formats:
+- JSON: Raw data structure
+- CSV: Pairwise results per grade
+- Excel: Summary + Pairwise + Matrices (multiple sheets)
+- NPZ: NumPy binary format untuk matrices
+- Markdown: Human-readable report
 
 Cara menjalankan:
     python test_modul2.py
@@ -16,6 +23,7 @@ Requirements:
     - pandas
     - numpy
     - scipy
+    - openpyxl (untuk Excel export)
     - Hasil dari MODUL 1 (preprocessed_pilot_data.csv)
 """
 
@@ -39,12 +47,12 @@ def main():
     """Main test function."""
     
     print("\n" + "="*70)
-    print("MODUL 2 - GRANGER CAUSALITY TESTING")
+    print("MODUL 2 - GRANGER CAUSALITY TESTING (ALL OUTPUT FORMATS)")
     print("="*70)
     
     # Define paths
     input_file = Path(__file__).parent / "data" / "processed" / "preprocessed_pilot_data.csv"
-    output_file = Path(__file__).parent / "data" / "processed" / "granger_results.json"
+    output_dir = Path(__file__).parent / "data" / "processed"
     
     # Check if input file exists
     if not input_file.exists():
@@ -63,7 +71,7 @@ def main():
         
         results = run_full_granger_analysis(
             input_file=str(input_file),
-            output_file=str(output_file),
+            output_dir=str(output_dir),
             config={
                 'lag_order': 4,
                 'price_col': 'price_diff',
@@ -94,7 +102,6 @@ def main():
                 print(f"  {i}. Market {market}: out-degree={out_degrees[market]}, in-degree={in_degrees[market]}")
             
             # Causal relationships
-            causal_matrix = grade_data['causal_matrix']
             print(f"\nCausal relationships matrix (M_i → M_j):")
             print(f"  Rows = target market (y), Cols = source market (x)")
             print(f"  1 = x Granger-causes y")
@@ -113,19 +120,75 @@ def main():
                 reverse=True
             )
             
-            for i, (relationship, test_result) in enumerate(sorted_tests[:10], 1):
-                f_stat = test_result.get('f_statistic', 0)
-                p_val = test_result.get('p_value', 1)
-                print(f"  {i}. {relationship}: F={f_stat:.4f}, p={p_val:.4f}")
+            if sorted_tests:
+                for i, (relationship, test_result) in enumerate(sorted_tests[:10], 1):
+                    f_stat = test_result.get('f_statistic', 0)
+                    p_val = test_result.get('p_value', 1)
+                    print(f"  {i}. {relationship}: F={f_stat:.4f}, p={p_val:.4f}")
+            else:
+                print("  No significant relationships found for this grade")
             
             print()
         
         # Check output files
-        print(f"\nOutput Files:")
-        if output_file.exists():
-            print(f"  ✓ {output_file} ({output_file.stat().st_size / 1024:.2f} KB)")
-        else:
-            print(f"  ✗ {output_file} NOT FOUND")
+        print(f"\nOutput Files Generated:")
+        print(f"{'-'*70}")
+        
+        output_files = {
+            'JSON': output_dir / "granger_results.json",
+            'CSV (Pairwise)': list(output_dir.glob("granger_pairwise_*.csv")),
+            'Excel': output_dir / "granger_results.xlsx",
+            'NPZ': output_dir / "granger_matrices.npz",
+            'Markdown': output_dir / "granger_results.md"
+        }
+        
+        for format_name, file_path in output_files.items():
+            if isinstance(file_path, list):
+                for fp in file_path:
+                    if fp.exists():
+                        size_kb = fp.stat().st_size / 1024
+                        print(f"  ✓ {format_name}: {fp.name} ({size_kb:.2f} KB)")
+            else:
+                if file_path.exists():
+                    size_kb = file_path.stat().st_size / 1024
+                    print(f"  ✓ {format_name}: {file_path.name} ({size_kb:.2f} KB)")
+                else:
+                    print(f"  ✗ {format_name}: NOT FOUND")
+        
+        print(f"\n{'-'*70}")
+        print("Output Directory: " + str(output_dir))
+        
+        print(f"\n{'='*70}")
+        print("OUTPUT FILES EXPLANATION:")
+        print(f"{'='*70}")
+        print("""
+1. granger_results.json
+   - Complete raw data structure
+   - Suitable for programming/automation
+   - Contains all test results, matrices, metrics
+   
+2. granger_pairwise_*.csv (one per grade)
+   - Pairwise test results
+   - Columns: Relationship, F_Statistic, P_Value, Granger_Causes, etc.
+   - Easy to import in Excel/Sheets
+   
+3. granger_results.xlsx
+   - Multiple sheets:
+     * Summary: Market leaders & metrics per grade
+     * Pairwise_{grade}: All 30 tests per grade
+     * Matrix_{grade}: Causal adjacency matrices
+   - Professional format for reports
+   
+4. granger_matrices.npz
+   - NumPy binary format
+   - Efficient storage for matrices
+   - Use: np.load('file.npz') untuk load
+   
+5. granger_results.md
+   - Human-readable Markdown report
+   - Formatted tables with results
+   - Easy to share/publish
+        """)
         
         print(f"\n{'='*70}")
         print("Ready for MODUL 3: Network Inference & Leader Detection")
@@ -143,7 +206,7 @@ def main():
     except ImportError as e:
         print(f"\n✗ IMPORT ERROR: {e}")
         print(f"\nPlease install required packages:")
-        print(f"  pip install pandas numpy scipy")
+        print(f"  pip install pandas numpy scipy openpyxl")
         return False
         
     except Exception as e:
