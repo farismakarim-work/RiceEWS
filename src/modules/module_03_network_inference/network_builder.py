@@ -141,14 +141,40 @@ def _build_node_metrics(nodes: List[str], edges: pd.DataFrame) -> pd.DataFrame:
 def _save_html_visualization(grade: str, nodes: List[str], edge_df: pd.DataFrame, out_dir: Path) -> Path:
     html_path = out_dir / f"network_graph_{grade}.html"
 
+    node_count = len(nodes)
+
+    # Safety: restrict edge_df to edges whose endpoints are both in the provided nodes list.
+    # This prevents any shared/global DataFrame from bleeding across grades.
+    if not edge_df.empty:
+        node_set = set(nodes)
+        edge_df = edge_df[
+            edge_df["source"].isin(node_set) & edge_df["target"].isin(node_set)
+        ].copy()
+
+    edge_count = len(edge_df)
+    title = f"Module 3 Network Graph - {grade} | Nodes={node_count} | Edges={edge_count}"
+    debug_text = f"Debug Metadata | grade={grade} | node_count={node_count} | edge_count={edge_count}"
+
     try:
         import plotly.graph_objects as go
+
+        debug_annotation = dict(
+            text=debug_text,
+            xref="paper",
+            yref="paper",
+            x=0.5,
+            y=-0.05,
+            showarrow=False,
+            font=dict(size=10, color="#666"),
+            align="center",
+        )
 
         if not nodes:
             fig = go.Figure()
             fig.update_layout(
-                title=f"Module 3 Network Graph - {grade} (No Significant Edges)",
+                title=title,
                 template="plotly_white",
+                annotations=[debug_annotation],
             )
             fig.write_html(str(html_path), include_plotlyjs="cdn")
             return html_path
@@ -201,18 +227,19 @@ def _save_html_visualization(grade: str, nodes: List[str], edge_df: pd.DataFrame
 
         fig = go.Figure(data=[edge_trace, node_trace])
         fig.update_layout(
-            title=f"Module 3 Network Graph - {grade} (Significant Edges)",
+            title=title,
             showlegend=False,
             template="plotly_white",
             xaxis=dict(showgrid=False, zeroline=False, visible=False),
             yaxis=dict(showgrid=False, zeroline=False, visible=False),
+            annotations=[debug_annotation],
         )
         fig.write_html(str(html_path), include_plotlyjs="cdn")
         return html_path
 
     except Exception:
         # Fallback minimal HTML, tetap memenuhi syarat minimal satu output visualisasi
-        nodes_html = "".join([f"<li>{n}</li>" for n in nodes]) or "<li>(no nodes)</li>"
+        nodes_html = "".join([f"<li>{node}</li>" for node in nodes]) or "<li>(no nodes)</li>"
         edges_html = ""
         if edge_df.empty:
             edges_html = "<li>(no significant edges)</li>"
@@ -225,19 +252,27 @@ def _save_html_visualization(grade: str, nodes: List[str], edge_df: pd.DataFrame
             )
 
         html = f"""<!doctype html>
-<html lang=\"en\">
+<html lang="en">
 <head>
-  <meta charset=\"utf-8\" />
-  <title>Module 3 Network Graph - {grade}</title>
+  <meta charset="utf-8" />
+  <title>{title}</title>
   <style>
     body {{ font-family: Arial, sans-serif; margin: 24px; }}
     h1 {{ margin-bottom: 8px; }}
     .muted {{ color: #666; }}
+    .debug-meta {{ background: #f5f5f5; border: 1px solid #ddd; padding: 12px; margin-bottom: 16px; font-size: 13px; }}
   </style>
 </head>
 <body>
-  <h1>Module 3 Network Graph - {grade}</h1>
-  <p class=\"muted\">Fallback HTML visualization summary (plotly unavailable).</p>
+  <h1>{title}</h1>
+  <p class="muted">Fallback HTML visualization summary (plotly unavailable).</p>
+
+  <div class="debug-meta">
+    <strong>Debug Metadata</strong><br/>
+    grade: {grade}<br/>
+    node_count: {node_count}<br/>
+    edge_count: {edge_count}
+  </div>
 
   <h2>Nodes</h2>
   <ul>{nodes_html}</ul>
