@@ -15,6 +15,14 @@ def _assert_non_empty(path: Path, label: str) -> None:
     print(f"✓ Non-empty {label} ({path.stat().st_size} bytes)")
 
 
+def _is_plotly_installed() -> bool:
+    try:
+        import plotly  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
 def main() -> None:
     print("=" * 70)
     print("MODUL 2 - GRANGER TEST (ALL OUTPUTS + VISUALIZATION) TEST")
@@ -28,7 +36,6 @@ def main() -> None:
     _assert_exists(preprocessed_csv, "MODUL 1 output CSV")
 
     # Run MODUL 2 pipeline
-    # Aligned with current implementation function name.
     from src.modules.causality_testing.granger_tester import run_full_granger_analysis
 
     print("\nRunning MODUL 2 pipeline...")
@@ -61,38 +68,40 @@ def main() -> None:
         csv_file = processed_dir / f"granger_pairwise_{g}.csv"
         _assert_non_empty(csv_file, f"CSV output ({g})")
 
-    # Visualization outputs (recommended naming)
-    # If your implementation uses different filenames, update this list.
-    expected_plots = [
-        "granger_network_low1.png",
-        "granger_network_low2.png",
-        "granger_network_med1.png",
-        "granger_network_med2.png",
-        "granger_heatmap_low1.png",
-        "granger_heatmap_low2.png",
-        "granger_heatmap_med1.png",
-        "granger_heatmap_med2.png",
-        "granger_leader_ranking_low1.png",
-        "granger_leader_ranking_low2.png",
-        "granger_leader_ranking_med1.png",
-        "granger_leader_ranking_med2.png",
-    ]
-
-    missing_plots = []
-    for plot_name in expected_plots:
-        plot_path = processed_dir / plot_name
-        if plot_path.exists() and plot_path.stat().st_size > 0:
-            print(f"✓ Plot: {plot_path}")
-        else:
-            missing_plots.append(plot_name)
-
-    if missing_plots:
-        print("\n⚠ Some expected plot files were not found:")
-        for p in missing_plots:
-            print(f"  - {p}")
-        print("\nIf your granger_tester uses different plot filenames, adjust expected_plots in test_modul2.py.")
+    # Visualization outputs from current generator (HTML)
+    if not _is_plotly_installed():
+        print("\n⚠ Plotly not installed; skipping visualization file checks.")
     else:
-        print("\n✓ All expected plot files found.")
+        expected_plots = [
+            "network_graph_low1.html",
+            "network_graph_low2.html",
+            "network_graph_med1.html",
+            "network_graph_med2.html",
+            "heatmap_low1.html",
+            "heatmap_low2.html",
+            "heatmap_med1.html",
+            "heatmap_med2.html",
+            "ranking_low1.html",
+            "ranking_low2.html",
+            "ranking_med1.html",
+            "ranking_med2.html",
+        ]
+
+        missing_plots = []
+        for plot_name in expected_plots:
+            plot_path = processed_dir / plot_name
+            if plot_path.exists() and plot_path.stat().st_size > 0:
+                print(f"✓ Plot: {plot_path}")
+            else:
+                missing_plots.append(plot_name)
+
+        if missing_plots:
+            print("\n⚠ Some expected visualization files were not found:")
+            for p in missing_plots:
+                print(f"  - {p}")
+            print("\nEnsure plotly is installed and visualization generation is enabled in modul 2.")
+        else:
+            print("\n✓ All expected visualization files found.")
 
     # Minimal schema check for JSON
     with open(json_file, "r", encoding="utf-8") as f:
