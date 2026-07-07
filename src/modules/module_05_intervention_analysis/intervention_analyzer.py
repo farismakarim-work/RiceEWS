@@ -36,10 +36,14 @@ DEFAULT_CONFIG: Dict = {
     "shock_magnitude": 1.0,
     "impact_threshold": 1e-9,
     "top_n": 5,
-    # node attenuation: fraction of propagation capacity retained [0, 1]
-    "node_attenuation_factor": 0.0,
-    # edge attenuation: fraction of edge weight retained [0, 1]
-    "edge_attenuation_factor": 0.0,
+    # node attenuation: fraction of propagation capacity RETAINED [0, 1]
+    # 0.0 = complete removal (strongest intervention)
+    # 0.5 = 50% capacity retained (moderate intervention, default)
+    # 1.0 = no intervention
+    "node_attenuation_factor": 0.5,
+    # edge attenuation: fraction of edge weight RETAINED [0, 1]
+    # 0.0 = remove edges entirely, 1.0 = no change
+    "edge_attenuation_factor": 0.5,
     # top-k sources to suppress in topk_source_control scenario
     "topk_control": 1,
 }

@@ -16,6 +16,7 @@ Requirements:
     - numpy
     - scipy
     - statsmodels
+    - scikit-learn
 """
 
 import sys

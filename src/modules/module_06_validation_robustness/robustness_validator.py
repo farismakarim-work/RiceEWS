@@ -269,14 +269,19 @@ def _compute_stability_metrics(
     vul_consistency = _pairwise_jaccard_mean(vulnerable_sets)
 
     impact_arr = np.array(impact_totals, dtype=float)
+    # Guard against NaN/Inf values that could propagate through statistics
+    impact_arr = np.where(np.isfinite(impact_arr), impact_arr, 0.0)
     mean_impact = float(np.mean(impact_arr))
     std_impact = float(np.std(impact_arr))
     impact_cov = std_impact / mean_impact if mean_impact > 1e-12 else 0.0
+    # Clamp in case of numerical edge-cases (e.g. all-zero impacts)
+    impact_cov = float(np.nan_to_num(impact_cov, nan=0.0, posinf=0.0, neginf=0.0))
 
     # Stability score: average of consistency scores minus CoV penalty (capped at 1)
     cov_penalty = min(impact_cov, 1.0)
+    raw_stability = (inf_consistency + vul_consistency) / 2.0 * (1.0 - 0.3 * cov_penalty)
     stability_score = float(np.clip(
-        (inf_consistency + vul_consistency) / 2.0 * (1.0 - 0.3 * cov_penalty),
+        np.nan_to_num(raw_stability, nan=0.0, posinf=1.0, neginf=0.0),
         0.0,
         1.0,
     ))

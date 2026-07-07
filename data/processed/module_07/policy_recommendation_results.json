@@ -17,31 +17,32 @@
     "min_impact_reduction_pct": 5.0,
     "rule_version": "v1.0"
   },
-  "generated_at": "2026-07-07T17:02:37Z",
+  "generated_at": "2026-07-07T17:08:34Z",
   "rule_version": "v1.0",
   "per_grade": {
     "low1": {
       "grade": "low1",
       "trigger_level": "RED",
       "priority_markets": [
-        "M103",
         "M105",
         "M106",
+        "M103",
         "M104",
-        "M102"
+        "M101"
       ],
       "priority_interventions": [
+        "edge_attenuation",
         "node_attenuation",
         "topk_source_control"
       ],
-      "expected_impact": "22.0% pengurangan dampak kumulatif",
+      "expected_impact": "45.7% pengurangan dampak kumulatif",
       "confidence_level": "HIGH",
-      "stability_score": 0.879,
-      "cumulative_impact_index": 30.0,
-      "vulnerability_concentration": 0.3396,
+      "stability_score": 1.0,
+      "cumulative_impact_index": 10.8351,
+      "vulnerability_concentration": 0.4615,
       "short_term_actions": [
-        "Aktivasi protokol darurat stok cadangan di M103",
-        "Terapkan intervensi segera: node_attenuation, topk_source_control",
+        "Aktivasi protokol darurat stok cadangan di M105",
+        "Terapkan intervensi segera: edge_attenuation, node_attenuation, topk_source_control",
         "Koordinasi lintas pasar untuk mencegah contagion lebih lanjut",
         "Lapor ke pemangku kebijakan dalam 24 jam"
       ],
@@ -52,11 +53,11 @@
         "Implementasi sistem pemantauan harga real-time"
       ],
       "weekly_monitoring_indicators": [
-        "Indeks harga mingguan: M103",
         "Indeks harga mingguan: M105",
         "Indeks harga mingguan: M106",
-        "Volume transaksi: M101",
+        "Indeks harga mingguan: M103",
         "Volume transaksi: M102",
+        "Volume transaksi: M101",
         "Rasio stok/permintaan pasar utama",
         "Deviasi harga terhadap rata-rata 4 minggu"
       ]
@@ -65,24 +66,25 @@
       "grade": "low2",
       "trigger_level": "RED",
       "priority_markets": [
-        "M103",
+        "M102",
         "M105",
         "M106",
-        "M102",
+        "M103",
         "M104"
       ],
       "priority_interventions": [
         "node_attenuation",
-        "topk_source_control"
+        "topk_source_control",
+        "edge_attenuation"
       ],
-      "expected_impact": "47.5% pengurangan dampak kumulatif",
+      "expected_impact": "37.8% pengurangan dampak kumulatif",
       "confidence_level": "HIGH",
-      "stability_score": 0.8376,
-      "cumulative_impact_index": 30.0,
-      "vulnerability_concentration": 0.3178,
+      "stability_score": 0.9946,
+      "cumulative_impact_index": 10.5515,
+      "vulnerability_concentration": 0.4739,
       "short_term_actions": [
-        "Aktivasi protokol darurat stok cadangan di M103",
-        "Terapkan intervensi segera: node_attenuation, topk_source_control",
+        "Aktivasi protokol darurat stok cadangan di M102",
+        "Terapkan intervensi segera: node_attenuation, topk_source_control, edge_attenuation",
         "Koordinasi lintas pasar untuk mencegah contagion lebih lanjut",
         "Lapor ke pemangku kebijakan dalam 24 jam"
       ],
@@ -93,11 +95,11 @@
         "Implementasi sistem pemantauan harga real-time"
       ],
       "weekly_monitoring_indicators": [
-        "Indeks harga mingguan: M103",
+        "Indeks harga mingguan: M102",
         "Indeks harga mingguan: M105",
         "Indeks harga mingguan: M106",
-        "Volume transaksi: M106",
-        "Volume transaksi: M101",
+        "Volume transaksi: M103",
+        "Volume transaksi: M104",
         "Rasio stok/permintaan pasar utama",
         "Deviasi harga terhadap rata-rata 4 minggu"
       ]
@@ -107,20 +109,20 @@
       "trigger_level": "RED",
       "priority_markets": [
         "M103",
-        "M102",
         "M104",
         "M106",
-        "M101"
+        "M102",
+        "M105"
       ],
       "priority_interventions": [
         "node_attenuation",
         "topk_source_control"
       ],
-      "expected_impact": "35.6% pengurangan dampak kumulatif",
+      "expected_impact": "27.3% pengurangan dampak kumulatif",
       "confidence_level": "HIGH",
-      "stability_score": 0.817,
-      "cumulative_impact_index": 30.0,
-      "vulnerability_concentration": 0.3414,
+      "stability_score": 0.9993,
+      "cumulative_impact_index": 7.9769,
+      "vulnerability_concentration": 0.6268,
       "short_term_actions": [
         "Aktivasi protokol darurat stok cadangan di M103",
         "Terapkan intervensi segera: node_attenuation, topk_source_control",
@@ -135,10 +137,10 @@
       ],
       "weekly_monitoring_indicators": [
         "Indeks harga mingguan: M103",
-        "Indeks harga mingguan: M102",
         "Indeks harga mingguan: M104",
-        "Volume transaksi: M106",
-        "Volume transaksi: M104",
+        "Indeks harga mingguan: M106",
+        "Volume transaksi: M101",
+        "Volume transaksi: M105",
         "Rasio stok/permintaan pasar utama",
         "Deviasi harga terhadap rata-rata 4 minggu"
       ]
@@ -147,24 +149,25 @@
       "grade": "med2",
       "trigger_level": "RED",
       "priority_markets": [
-        "M103",
-        "M102",
         "M104",
         "M106",
-        "M105"
+        "M102",
+        "M103",
+        "M101"
       ],
       "priority_interventions": [
         "node_attenuation",
-        "topk_source_control"
+        "topk_source_control",
+        "edge_attenuation"
       ],
-      "expected_impact": "33.2% pengurangan dampak kumulatif",
+      "expected_impact": "28.2% pengurangan dampak kumulatif",
       "confidence_level": "HIGH",
-      "stability_score": 0.848,
-      "cumulative_impact_index": 30.0,
-      "vulnerability_concentration": 0.2754,
+      "stability_score": 0.9982,
+      "cumulative_impact_index": 8.9592,
+      "vulnerability_concentration": 0.5581,
       "short_term_actions": [
-        "Aktivasi protokol darurat stok cadangan di M103",
-        "Terapkan intervensi segera: node_attenuation, topk_source_control",
+        "Aktivasi protokol darurat stok cadangan di M104",
+        "Terapkan intervensi segera: node_attenuation, topk_source_control, edge_attenuation",
         "Koordinasi lintas pasar untuk mencegah contagion lebih lanjut",
         "Lapor ke pemangku kebijakan dalam 24 jam"
       ],
@@ -175,11 +178,11 @@
         "Implementasi sistem pemantauan harga real-time"
       ],
       "weekly_monitoring_indicators": [
-        "Indeks harga mingguan: M103",
-        "Indeks harga mingguan: M102",
         "Indeks harga mingguan: M104",
+        "Indeks harga mingguan: M106",
+        "Indeks harga mingguan: M102",
         "Volume transaksi: M105",
-        "Volume transaksi: M101",
+        "Volume transaksi: M103",
         "Rasio stok/permintaan pasar utama",
         "Deviasi harga terhadap rata-rata 4 minggu"
       ]

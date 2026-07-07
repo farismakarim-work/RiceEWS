@@ -183,12 +183,97 @@ class GrangerCausalityTester:
         y = y_ts[lag_order:]
         return X_aug, y
 
+    def select_optimal_lag(self,
+                           y_ts: np.ndarray,
+                           x_ts: Optional[np.ndarray] = None,
+                           max_lag: int = 8,
+                           criterion: str = 'bic') -> int:
+        """
+        Pilih lag optimal menggunakan information criterion (BIC atau AIC).
+
+        Untuk setiap lag k dari 1 hingga max_lag, model restricted (y pada
+        lag-nya sendiri) di-fit dan information criterion dihitung.
+        Lag dengan nilai IC terendah dipilih.
+
+        Parameters
+        ----------
+        y_ts : np.ndarray
+            Time series target.
+        x_ts : np.ndarray, optional
+            Time series prediktor (jika None, hanya gunakan model restricted).
+        max_lag : int
+            Lag maksimum yang dicoba (default 8).
+        criterion : str
+            'bic' (Bayesian Information Criterion, default) atau 'aic'.
+
+        Returns
+        -------
+        int
+            Lag optimal (minimal 1).
+        """
+        best_lag = 1
+        best_ic = float('inf')
+
+        n_total = len(y_ts)
+
+        for k in range(1, max_lag + 1):
+            X, y = self._build_lagged_matrix(y_ts, k)
+            n = len(y)
+
+            if n < k + 2:
+                # Tidak cukup observasi untuk lag ini
+                break
+
+            _, _, rss = self._ols_regression(X, y)
+            if rss is None or rss <= 0:
+                continue
+
+            # Jumlah parameter: k lag + intercept
+            num_params = k + 1
+
+            sigma2 = rss / n
+            # Hindari log(0)
+            if sigma2 <= 0:
+                continue
+
+            log_lik = -n / 2.0 * np.log(sigma2)
+
+            if criterion == 'bic':
+                ic = -2 * log_lik + num_params * np.log(n)
+            else:  # aic
+                ic = -2 * log_lik + 2 * num_params
+
+            if ic < best_ic:
+                best_ic = ic
+                best_lag = k
+
+        return best_lag
+
     def granger_causality_test(self,
                                y_ts: np.ndarray,
                                x_ts: np.ndarray,
                                lag_order: int = 4,
                                significance_level: float = 0.05) -> Dict:
-        """Perform Granger causality test."""
+        """
+        Perform pairwise Granger causality test.
+
+        H0: x_ts does NOT Granger-cause y_ts.
+        H1: x_ts DOES Granger-cause y_ts (lags of x improve prediction of y).
+
+        Parameters
+        ----------
+        y_ts, x_ts : np.ndarray
+            Time series untuk target dan prediktor.
+        lag_order : int
+            Jumlah lag yang digunakan.
+        significance_level : float
+            Threshold p-value untuk menolak H0 (default 0.05).
+
+        Returns
+        -------
+        dict
+            f_statistic, p_value, granger_causes, dan metrik pendukung.
+        """
 
         X_restricted, y = self._build_lagged_matrix(y_ts, lag_order)
 
@@ -258,8 +343,40 @@ class GrangerCausalityTester:
                                         df: pd.DataFrame,
                                         grade: str,
                                         lag_order: int = 4,
-                                        price_col: str = 'price_diff') -> Dict:
-        """Test ALL pairwise Granger relationships untuk satu grade."""
+                                        price_col: str = 'price_diff',
+                                        auto_lag: bool = False,
+                                        max_lag: int = 8,
+                                        lag_criterion: str = 'bic',
+                                        significance_level: float = 0.05) -> Dict:
+        """
+        Test ALL pairwise Granger relationships untuk satu grade.
+
+        Parameters
+        ----------
+        df : pd.DataFrame
+            Preprocessed data dari MODUL 1.
+        grade : str
+            Grade yang diproses (misal 'low1').
+        lag_order : int
+            Jumlah lag yang digunakan jika ``auto_lag=False``.
+        price_col : str
+            Kolom harga yang digunakan (default 'price_diff').
+        auto_lag : bool
+            Jika True, lag optimal dipilih otomatis berbasis BIC/AIC
+            untuk setiap target market menggunakan model restricted.
+            Mengabaikan parameter ``lag_order``.
+        max_lag : int
+            Lag maksimum yang dicoba saat ``auto_lag=True`` (default 8).
+        lag_criterion : str
+            'bic' atau 'aic', digunakan saat ``auto_lag=True``.
+        significance_level : float
+            Threshold p-value (default 0.05).
+
+        Returns
+        -------
+        dict
+            Hasil pairwise test dengan kunci format "M{x}→M{y}".
+        """
 
         markets = sorted(df[df['grade'] == grade]['market_id'].unique())
 
@@ -269,12 +386,24 @@ class GrangerCausalityTester:
             print(f"{'='*70}")
             print(f"Markets: {markets}")
             print(f"Pairwise tests: {len(markets) * (len(markets) - 1)}")
-            print(f"Lag order: {lag_order}\n")
+            lag_info = f"auto ({lag_criterion.upper()}, max={max_lag})" if auto_lag else str(lag_order)
+            print(f"Lag order: {lag_info}\n")
 
         results = {}
         causal_count = 0
 
         for y_market in markets:
+            # Jika auto_lag, tentukan lag optimal untuk y_market ini
+            if auto_lag:
+                y_ts_for_lag = self.prepare_time_series(df, y_market, grade, price_col)
+                effective_lag = (
+                    self.select_optimal_lag(y_ts_for_lag, max_lag=max_lag, criterion=lag_criterion)
+                    if y_ts_for_lag is not None
+                    else lag_order
+                )
+            else:
+                effective_lag = lag_order
+
             for x_market in markets:
                 if y_market == x_market:
                     continue
@@ -289,7 +418,9 @@ class GrangerCausalityTester:
                     }
                     continue
 
-                test_result = self.granger_causality_test(y_ts, x_ts, lag_order)
+                test_result = self.granger_causality_test(
+                    y_ts, x_ts, effective_lag, significance_level
+                )
                 results[f"M{x_market}→M{y_market}"] = test_result
 
                 if test_result['granger_causes']:
@@ -297,7 +428,7 @@ class GrangerCausalityTester:
                     if self.verbose:
                         print(
                             f"  ✓ M{x_market}→M{y_market}: F={test_result['f_statistic']:.4f}, "
-                            f"p={test_result['p_value']:.4f}"
+                            f"p={test_result['p_value']:.4f}, lag={effective_lag}"
                         )
 
         if self.verbose:
@@ -792,14 +923,47 @@ class GrangerCausalityTester:
 def run_full_granger_analysis(input_file: str,
                               output_dir: str,
                               config: Dict = None) -> Dict:
-    """Run complete Granger causality analysis dengan visualizations."""
+    """
+    Run complete Granger causality analysis dengan visualizations.
 
+    Parameters
+    ----------
+    input_file : str
+        Path ke preprocessed_pilot_data.csv dari MODUL 1.
+    output_dir : str
+        Direktori output untuk semua format hasil.
+    config : dict, optional
+        Konfigurasi. Kunci yang didukung:
+        - ``lag_order`` (int, default 4): jumlah lag yang digunakan.
+        - ``price_col`` (str, default 'price_diff'): kolom harga.
+        - ``significance_level`` (float, default 0.05): threshold p-value.
+        - ``auto_lag`` (bool, default False): aktifkan pemilihan lag
+          otomatis berbasis BIC. Jika True, ``lag_order`` diabaikan.
+        - ``max_lag`` (int, default 8): lag maksimum saat ``auto_lag=True``.
+        - ``lag_criterion`` (str, default 'bic'): 'bic' atau 'aic'.
+
+    Returns
+    -------
+    dict
+        Hasil lengkap per grade.
+    """
     if config is None:
         config = {
             'lag_order': 4,
             'price_col': 'price_diff',
             'significance_level': 0.05,
+            'auto_lag': False,
+            'max_lag': 8,
+            'lag_criterion': 'bic',
         }
+
+    # Berikan nilai default untuk kunci opsional agar tidak KeyError
+    lag_order = int(config.get('lag_order', 4))
+    price_col = str(config.get('price_col', 'price_diff'))
+    significance_level = float(config.get('significance_level', 0.05))
+    auto_lag = bool(config.get('auto_lag', False))
+    max_lag = int(config.get('max_lag', 8))
+    lag_criterion = str(config.get('lag_criterion', 'bic'))
 
     tester = GrangerCausalityTester(verbose=True)
     df = tester.load_preprocessed_data(input_file)
@@ -815,8 +979,12 @@ def run_full_granger_analysis(input_file: str,
         grade_results = tester.test_all_pairwise_relationships(
             df,
             grade,
-            lag_order=config['lag_order'],
-            price_col=config['price_col'],
+            lag_order=lag_order,
+            price_col=price_col,
+            auto_lag=auto_lag,
+            max_lag=max_lag,
+            lag_criterion=lag_criterion,
+            significance_level=significance_level,
         )
 
         causal_matrix = tester.build_causal_matrix(grade_results, markets)
