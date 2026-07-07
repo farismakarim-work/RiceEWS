@@ -171,32 +171,44 @@
             "intervention_avg_affected_nodes": 5.0,
             "affected_nodes_reduction": 1.0,
             "influential_rank_changes": {
-              "M104": {
-                "baseline_rank": 4,
-                "intervention_rank": 3
-              },
-              "M103": {
-                "baseline_rank": 3,
-                "intervention_rank": 1
-              },
-              "M105": {
-                "baseline_rank": 5,
-                "intervention_rank": 4
+              "M101": {
+                "baseline_rank": 1,
+                "intervention_rank": null
               },
               "M106": {
                 "baseline_rank": null,
                 "intervention_rank": 2
               },
-              "M101": {
-                "baseline_rank": 1,
-                "intervention_rank": null
+              "M105": {
+                "baseline_rank": 5,
+                "intervention_rank": 4
               },
               "M102": {
                 "baseline_rank": 2,
                 "intervention_rank": 5
+              },
+              "M104": {
+                "baseline_rank": 4,
+                "intervention_rank": 3
+              },
+              "M103": {
+                "baseline_rank": 3,
+                "intervention_rank": 1
               }
             },
             "vulnerable_rank_changes": {
+              "M106": {
+                "baseline_rank": 3,
+                "intervention_rank": 3
+              },
+              "M105": {
+                "baseline_rank": 2,
+                "intervention_rank": 2
+              },
+              "M102": {
+                "baseline_rank": 5,
+                "intervention_rank": 5
+              },
               "M104": {
                 "baseline_rank": 4,
                 "intervention_rank": 4
@@ -204,18 +216,6 @@
               "M103": {
                 "baseline_rank": 1,
                 "intervention_rank": 1
-              },
-              "M105": {
-                "baseline_rank": 2,
-                "intervention_rank": 2
-              },
-              "M106": {
-                "baseline_rank": 3,
-                "intervention_rank": 3
-              },
-              "M102": {
-                "baseline_rank": 5,
-                "intervention_rank": 5
               }
             }
           }
@@ -302,32 +302,44 @@
             "intervention_avg_affected_nodes": 6.0,
             "affected_nodes_reduction": 0.0,
             "influential_rank_changes": {
-              "M104": {
-                "baseline_rank": 4,
-                "intervention_rank": 5
-              },
-              "M103": {
-                "baseline_rank": 3,
-                "intervention_rank": 4
-              },
-              "M105": {
-                "baseline_rank": 5,
-                "intervention_rank": null
+              "M101": {
+                "baseline_rank": 1,
+                "intervention_rank": 2
               },
               "M106": {
                 "baseline_rank": null,
                 "intervention_rank": 1
               },
-              "M101": {
-                "baseline_rank": 1,
-                "intervention_rank": 2
+              "M105": {
+                "baseline_rank": 5,
+                "intervention_rank": null
               },
               "M102": {
                 "baseline_rank": 2,
                 "intervention_rank": 3
+              },
+              "M104": {
+                "baseline_rank": 4,
+                "intervention_rank": 5
+              },
+              "M103": {
+                "baseline_rank": 3,
+                "intervention_rank": 4
               }
             },
             "vulnerable_rank_changes": {
+              "M106": {
+                "baseline_rank": 3,
+                "intervention_rank": 2
+              },
+              "M105": {
+                "baseline_rank": 2,
+                "intervention_rank": 3
+              },
+              "M102": {
+                "baseline_rank": 5,
+                "intervention_rank": 5
+              },
               "M104": {
                 "baseline_rank": 4,
                 "intervention_rank": 4
@@ -335,18 +347,6 @@
               "M103": {
                 "baseline_rank": 1,
                 "intervention_rank": 1
-              },
-              "M105": {
-                "baseline_rank": 2,
-                "intervention_rank": 3
-              },
-              "M106": {
-                "baseline_rank": 3,
-                "intervention_rank": 2
-              },
-              "M102": {
-                "baseline_rank": 5,
-                "intervention_rank": 5
               }
             }
           }
@@ -432,32 +432,44 @@
             "intervention_avg_affected_nodes": 5.0,
             "affected_nodes_reduction": 1.0,
             "influential_rank_changes": {
-              "M104": {
-                "baseline_rank": 4,
-                "intervention_rank": 3
-              },
-              "M103": {
-                "baseline_rank": 3,
-                "intervention_rank": 1
-              },
-              "M105": {
-                "baseline_rank": 5,
-                "intervention_rank": 4
+              "M101": {
+                "baseline_rank": 1,
+                "intervention_rank": null
               },
               "M106": {
                 "baseline_rank": null,
                 "intervention_rank": 2
               },
-              "M101": {
-                "baseline_rank": 1,
-                "intervention_rank": null
+              "M105": {
+                "baseline_rank": 5,
+                "intervention_rank": 4
               },
               "M102": {
                 "baseline_rank": 2,
                 "intervention_rank": 5
+              },
+              "M104": {
+                "baseline_rank": 4,
+                "intervention_rank": 3
+              },
+              "M103": {
+                "baseline_rank": 3,
+                "intervention_rank": 1
               }
             },
             "vulnerable_rank_changes": {
+              "M106": {
+                "baseline_rank": 3,
+                "intervention_rank": 3
+              },
+              "M105": {
+                "baseline_rank": 2,
+                "intervention_rank": 2
+              },
+              "M102": {
+                "baseline_rank": 5,
+                "intervention_rank": 5
+              },
               "M104": {
                 "baseline_rank": 4,
                 "intervention_rank": 4
@@ -465,18 +477,6 @@
               "M103": {
                 "baseline_rank": 1,
                 "intervention_rank": 1
-              },
-              "M105": {
-                "baseline_rank": 2,
-                "intervention_rank": 2
-              },
-              "M106": {
-                "baseline_rank": 3,
-                "intervention_rank": 3
-              },
-              "M102": {
-                "baseline_rank": 5,
-                "intervention_rank": 5
               }
             }
           }
@@ -652,32 +652,44 @@
             "intervention_avg_affected_nodes": 5.0,
             "affected_nodes_reduction": 1.0,
             "influential_rank_changes": {
-              "M104": {
-                "baseline_rank": 5,
-                "intervention_rank": 4
-              },
-              "M103": {
-                "baseline_rank": 4,
-                "intervention_rank": 5
-              },
-              "M105": {
-                "baseline_rank": null,
-                "intervention_rank": 2
+              "M101": {
+                "baseline_rank": 2,
+                "intervention_rank": 3
               },
               "M106": {
                 "baseline_rank": 1,
                 "intervention_rank": null
               },
-              "M101": {
-                "baseline_rank": 2,
-                "intervention_rank": 3
+              "M104": {
+                "baseline_rank": 5,
+                "intervention_rank": 4
               },
               "M102": {
                 "baseline_rank": 3,
                 "intervention_rank": 1
+              },
+              "M105": {
+                "baseline_rank": null,
+                "intervention_rank": 2
+              },
+              "M103": {
+                "baseline_rank": 4,
+                "intervention_rank": 5
               }
             },
             "vulnerable_rank_changes": {
+              "M106": {
+                "baseline_rank": 3,
+                "intervention_rank": 2
+              },
+              "M105": {
+                "baseline_rank": 2,
+                "intervention_rank": 3
+              },
+              "M102": {
+                "baseline_rank": 4,
+                "intervention_rank": 4
+              },
               "M104": {
                 "baseline_rank": 5,
                 "intervention_rank": 5
@@ -685,18 +697,6 @@
               "M103": {
                 "baseline_rank": 1,
                 "intervention_rank": 1
-              },
-              "M105": {
-                "baseline_rank": 2,
-                "intervention_rank": 3
-              },
-              "M106": {
-                "baseline_rank": 3,
-                "intervention_rank": 2
-              },
-              "M102": {
-                "baseline_rank": 4,
-                "intervention_rank": 4
               }
             }
           }
@@ -783,32 +783,44 @@
             "intervention_avg_affected_nodes": 6.0,
             "affected_nodes_reduction": 0.0,
             "influential_rank_changes": {
+              "M101": {
+                "baseline_rank": 2,
+                "intervention_rank": 1
+              },
+              "M106": {
+                "baseline_rank": 1,
+                "intervention_rank": 4
+              },
               "M104": {
                 "baseline_rank": 5,
                 "intervention_rank": 3
               },
-              "M103": {
-                "baseline_rank": 4,
-                "intervention_rank": null
+              "M102": {
+                "baseline_rank": 3,
+                "intervention_rank": 5
               },
               "M105": {
                 "baseline_rank": null,
                 "intervention_rank": 2
               },
-              "M106": {
-                "baseline_rank": 1,
-                "intervention_rank": 4
-              },
-              "M101": {
-                "baseline_rank": 2,
-                "intervention_rank": 1
-              },
-              "M102": {
-                "baseline_rank": 3,
-                "intervention_rank": 5
+              "M103": {
+                "baseline_rank": 4,
+                "intervention_rank": null
               }
             },
             "vulnerable_rank_changes": {
+              "M106": {
+                "baseline_rank": 3,
+                "intervention_rank": 2
+              },
+              "M105": {
+                "baseline_rank": 2,
+                "intervention_rank": 3
+              },
+              "M102": {
+                "baseline_rank": 4,
+                "intervention_rank": 5
+              },
               "M104": {
                 "baseline_rank": 5,
                 "intervention_rank": 4
@@ -816,18 +828,6 @@
               "M103": {
                 "baseline_rank": 1,
                 "intervention_rank": 1
-              },
-              "M105": {
-                "baseline_rank": 2,
-                "intervention_rank": 3
-              },
-              "M106": {
-                "baseline_rank": 3,
-                "intervention_rank": 2
-              },
-              "M102": {
-                "baseline_rank": 4,
-                "intervention_rank": 5
               }
             }
           }
@@ -913,32 +913,44 @@
             "intervention_avg_affected_nodes": 5.0,
             "affected_nodes_reduction": 1.0,
             "influential_rank_changes": {
-              "M104": {
-                "baseline_rank": 5,
-                "intervention_rank": 4
-              },
-              "M103": {
-                "baseline_rank": 4,
-                "intervention_rank": 5
-              },
-              "M105": {
-                "baseline_rank": null,
-                "intervention_rank": 2
+              "M101": {
+                "baseline_rank": 2,
+                "intervention_rank": 3
               },
               "M106": {
                 "baseline_rank": 1,
                 "intervention_rank": null
               },
-              "M101": {
-                "baseline_rank": 2,
-                "intervention_rank": 3
+              "M104": {
+                "baseline_rank": 5,
+                "intervention_rank": 4
               },
               "M102": {
                 "baseline_rank": 3,
                 "intervention_rank": 1
+              },
+              "M105": {
+                "baseline_rank": null,
+                "intervention_rank": 2
+              },
+              "M103": {
+                "baseline_rank": 4,
+                "intervention_rank": 5
               }
             },
             "vulnerable_rank_changes": {
+              "M106": {
+                "baseline_rank": 3,
+                "intervention_rank": 2
+              },
+              "M105": {
+                "baseline_rank": 2,
+                "intervention_rank": 3
+              },
+              "M102": {
+                "baseline_rank": 4,
+                "intervention_rank": 4
+              },
               "M104": {
                 "baseline_rank": 5,
                 "intervention_rank": 5
@@ -946,18 +958,6 @@
               "M103": {
                 "baseline_rank": 1,
                 "intervention_rank": 1
-              },
-              "M105": {
-                "baseline_rank": 2,
-                "intervention_rank": 3
-              },
-              "M106": {
-                "baseline_rank": 3,
-                "intervention_rank": 2
-              },
-              "M102": {
-                "baseline_rank": 4,
-                "intervention_rank": 4
               }
             }
           }
@@ -1133,51 +1133,51 @@
             "intervention_avg_affected_nodes": 5.0,
             "affected_nodes_reduction": 1.0,
             "influential_rank_changes": {
-              "M104": {
-                "baseline_rank": 2,
-                "intervention_rank": 2
-              },
-              "M103": {
-                "baseline_rank": 5,
-                "intervention_rank": 1
-              },
-              "M105": {
-                "baseline_rank": null,
-                "intervention_rank": 5
+              "M101": {
+                "baseline_rank": 3,
+                "intervention_rank": 4
               },
               "M106": {
                 "baseline_rank": 1,
                 "intervention_rank": null
               },
-              "M101": {
-                "baseline_rank": 3,
-                "intervention_rank": 4
+              "M104": {
+                "baseline_rank": 2,
+                "intervention_rank": 2
               },
               "M102": {
                 "baseline_rank": 4,
                 "intervention_rank": 3
+              },
+              "M105": {
+                "baseline_rank": null,
+                "intervention_rank": 5
+              },
+              "M103": {
+                "baseline_rank": 5,
+                "intervention_rank": 1
               }
             },
             "vulnerable_rank_changes": {
-              "M104": {
-                "baseline_rank": 3,
-                "intervention_rank": 3
-              },
-              "M103": {
-                "baseline_rank": 1,
-                "intervention_rank": 1
+              "M101": {
+                "baseline_rank": 5,
+                "intervention_rank": 5
               },
               "M106": {
                 "baseline_rank": 4,
                 "intervention_rank": 4
               },
-              "M101": {
-                "baseline_rank": 5,
-                "intervention_rank": 5
+              "M104": {
+                "baseline_rank": 3,
+                "intervention_rank": 3
               },
               "M102": {
                 "baseline_rank": 2,
                 "intervention_rank": 2
+              },
+              "M103": {
+                "baseline_rank": 1,
+                "intervention_rank": 1
               }
             }
           }
@@ -1264,47 +1264,47 @@
             "intervention_avg_affected_nodes": 6.0,
             "affected_nodes_reduction": 0.0,
             "influential_rank_changes": {
-              "M104": {
-                "baseline_rank": 2,
-                "intervention_rank": 5
-              },
-              "M103": {
-                "baseline_rank": 5,
-                "intervention_rank": 4
+              "M101": {
+                "baseline_rank": 3,
+                "intervention_rank": 3
               },
               "M106": {
                 "baseline_rank": 1,
                 "intervention_rank": 2
               },
-              "M101": {
-                "baseline_rank": 3,
-                "intervention_rank": 3
+              "M104": {
+                "baseline_rank": 2,
+                "intervention_rank": 5
               },
               "M102": {
                 "baseline_rank": 4,
                 "intervention_rank": 1
+              },
+              "M103": {
+                "baseline_rank": 5,
+                "intervention_rank": 4
               }
             },
             "vulnerable_rank_changes": {
-              "M104": {
-                "baseline_rank": 3,
-                "intervention_rank": 2
-              },
-              "M103": {
-                "baseline_rank": 1,
-                "intervention_rank": 1
+              "M101": {
+                "baseline_rank": 5,
+                "intervention_rank": 5
               },
               "M106": {
                 "baseline_rank": 4,
                 "intervention_rank": 4
               },
-              "M101": {
-                "baseline_rank": 5,
-                "intervention_rank": 5
+              "M104": {
+                "baseline_rank": 3,
+                "intervention_rank": 2
               },
               "M102": {
                 "baseline_rank": 2,
                 "intervention_rank": 3
+              },
+              "M103": {
+                "baseline_rank": 1,
+                "intervention_rank": 1
               }
             }
           }
@@ -1390,51 +1390,51 @@
             "intervention_avg_affected_nodes": 5.0,
             "affected_nodes_reduction": 1.0,
             "influential_rank_changes": {
-              "M104": {
-                "baseline_rank": 2,
-                "intervention_rank": 2
-              },
-              "M103": {
-                "baseline_rank": 5,
-                "intervention_rank": 1
-              },
-              "M105": {
-                "baseline_rank": null,
-                "intervention_rank": 5
+              "M101": {
+                "baseline_rank": 3,
+                "intervention_rank": 4
               },
               "M106": {
                 "baseline_rank": 1,
                 "intervention_rank": null
               },
-              "M101": {
-                "baseline_rank": 3,
-                "intervention_rank": 4
+              "M104": {
+                "baseline_rank": 2,
+                "intervention_rank": 2
               },
               "M102": {
                 "baseline_rank": 4,
                 "intervention_rank": 3
+              },
+              "M105": {
+                "baseline_rank": null,
+                "intervention_rank": 5
+              },
+              "M103": {
+                "baseline_rank": 5,
+                "intervention_rank": 1
               }
             },
             "vulnerable_rank_changes": {
-              "M104": {
-                "baseline_rank": 3,
-                "intervention_rank": 3
-              },
-              "M103": {
-                "baseline_rank": 1,
-                "intervention_rank": 1
+              "M101": {
+                "baseline_rank": 5,
+                "intervention_rank": 5
               },
               "M106": {
                 "baseline_rank": 4,
                 "intervention_rank": 4
               },
-              "M101": {
-                "baseline_rank": 5,
-                "intervention_rank": 5
+              "M104": {
+                "baseline_rank": 3,
+                "intervention_rank": 3
               },
               "M102": {
                 "baseline_rank": 2,
                 "intervention_rank": 2
+              },
+              "M103": {
+                "baseline_rank": 1,
+                "intervention_rank": 1
               }
             }
           }
@@ -1610,6 +1610,22 @@
             "intervention_avg_affected_nodes": 5.0,
             "affected_nodes_reduction": 1.0,
             "influential_rank_changes": {
+              "M101": {
+                "baseline_rank": 2,
+                "intervention_rank": 4
+              },
+              "M106": {
+                "baseline_rank": 3,
+                "intervention_rank": 5
+              },
+              "M105": {
+                "baseline_rank": 1,
+                "intervention_rank": null
+              },
+              "M102": {
+                "baseline_rank": 4,
+                "intervention_rank": 2
+              },
               "M104": {
                 "baseline_rank": null,
                 "intervention_rank": 3
@@ -1617,44 +1633,28 @@
               "M103": {
                 "baseline_rank": 5,
                 "intervention_rank": 1
-              },
-              "M105": {
-                "baseline_rank": 1,
-                "intervention_rank": null
-              },
-              "M106": {
-                "baseline_rank": 3,
-                "intervention_rank": 5
-              },
-              "M101": {
-                "baseline_rank": 2,
-                "intervention_rank": 4
-              },
-              "M102": {
-                "baseline_rank": 4,
-                "intervention_rank": 2
               }
             },
             "vulnerable_rank_changes": {
+              "M106": {
+                "baseline_rank": 4,
+                "intervention_rank": 4
+              },
               "M104": {
                 "baseline_rank": 3,
                 "intervention_rank": 3
               },
-              "M103": {
-                "baseline_rank": 1,
-                "intervention_rank": 1
+              "M102": {
+                "baseline_rank": 2,
+                "intervention_rank": 2
               },
               "M105": {
                 "baseline_rank": 5,
                 "intervention_rank": 5
               },
-              "M106": {
-                "baseline_rank": 4,
-                "intervention_rank": 4
-              },
-              "M102": {
-                "baseline_rank": 2,
-                "intervention_rank": 2
+              "M103": {
+                "baseline_rank": 1,
+                "intervention_rank": 1
               }
             }
           }
@@ -1741,6 +1741,22 @@
             "intervention_avg_affected_nodes": 6.0,
             "affected_nodes_reduction": 0.0,
             "influential_rank_changes": {
+              "M101": {
+                "baseline_rank": 2,
+                "intervention_rank": null
+              },
+              "M106": {
+                "baseline_rank": 3,
+                "intervention_rank": 5
+              },
+              "M105": {
+                "baseline_rank": 1,
+                "intervention_rank": 4
+              },
+              "M102": {
+                "baseline_rank": 4,
+                "intervention_rank": 2
+              },
               "M104": {
                 "baseline_rank": null,
                 "intervention_rank": 3
@@ -1748,48 +1764,32 @@
               "M103": {
                 "baseline_rank": 5,
                 "intervention_rank": 1
-              },
-              "M105": {
-                "baseline_rank": 1,
-                "intervention_rank": 4
-              },
-              "M106": {
-                "baseline_rank": 3,
-                "intervention_rank": 5
-              },
-              "M101": {
-                "baseline_rank": 2,
-                "intervention_rank": null
-              },
-              "M102": {
-                "baseline_rank": 4,
-                "intervention_rank": 2
               }
             },
             "vulnerable_rank_changes": {
-              "M104": {
-                "baseline_rank": 3,
-                "intervention_rank": 2
-              },
-              "M103": {
-                "baseline_rank": 1,
-                "intervention_rank": 1
-              },
-              "M105": {
-                "baseline_rank": 5,
-                "intervention_rank": 4
+              "M101": {
+                "baseline_rank": null,
+                "intervention_rank": 5
               },
               "M106": {
                 "baseline_rank": 4,
                 "intervention_rank": 3
               },
-              "M101": {
-                "baseline_rank": null,
-                "intervention_rank": 5
+              "M104": {
+                "baseline_rank": 3,
+                "intervention_rank": 2
               },
               "M102": {
                 "baseline_rank": 2,
                 "intervention_rank": null
+              },
+              "M105": {
+                "baseline_rank": 5,
+                "intervention_rank": 4
+              },
+              "M103": {
+                "baseline_rank": 1,
+                "intervention_rank": 1
               }
             }
           }
@@ -1875,6 +1875,22 @@
             "intervention_avg_affected_nodes": 5.0,
             "affected_nodes_reduction": 1.0,
             "influential_rank_changes": {
+              "M101": {
+                "baseline_rank": 2,
+                "intervention_rank": 4
+              },
+              "M106": {
+                "baseline_rank": 3,
+                "intervention_rank": 5
+              },
+              "M105": {
+                "baseline_rank": 1,
+                "intervention_rank": null
+              },
+              "M102": {
+                "baseline_rank": 4,
+                "intervention_rank": 2
+              },
               "M104": {
                 "baseline_rank": null,
                 "intervention_rank": 3
@@ -1882,44 +1898,28 @@
               "M103": {
                 "baseline_rank": 5,
                 "intervention_rank": 1
-              },
-              "M105": {
-                "baseline_rank": 1,
-                "intervention_rank": null
-              },
-              "M106": {
-                "baseline_rank": 3,
-                "intervention_rank": 5
-              },
-              "M101": {
-                "baseline_rank": 2,
-                "intervention_rank": 4
-              },
-              "M102": {
-                "baseline_rank": 4,
-                "intervention_rank": 2
               }
             },
             "vulnerable_rank_changes": {
+              "M106": {
+                "baseline_rank": 4,
+                "intervention_rank": 4
+              },
               "M104": {
                 "baseline_rank": 3,
                 "intervention_rank": 3
               },
-              "M103": {
-                "baseline_rank": 1,
-                "intervention_rank": 1
+              "M102": {
+                "baseline_rank": 2,
+                "intervention_rank": 2
               },
               "M105": {
                 "baseline_rank": 5,
                 "intervention_rank": 5
               },
-              "M106": {
-                "baseline_rank": 4,
-                "intervention_rank": 4
-              },
-              "M102": {
-                "baseline_rank": 2,
-                "intervention_rank": 2
+              "M103": {
+                "baseline_rank": 1,
+                "intervention_rank": 1
               }
             }
           }
