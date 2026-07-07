@@ -234,9 +234,11 @@ def _break_cycles_greedy(edge_df: pd.DataFrame) -> Tuple[pd.DataFrame, List[Tupl
             removed_edges.append((str(removed_row["source"]), str(removed_row["target"])))
             df = df.drop(index=min_idx).reset_index(drop=True)
         else:
-            # Tidak ada edge yang dapat dihapus (seharusnya tidak terjadi)
-            logger.warning("Cycle-breaking: tidak dapat menemukan edge untuk dihapus.")
-            break
+            # Cycle found but no edge available to remove — this is a logic error.
+            raise RuntimeError(
+                "Cycle-breaking: cycle detected but no edge found to remove. "
+                "This indicates a bug in the cycle-detection or edge-lookup logic."
+            )
 
     return df, removed_edges
 

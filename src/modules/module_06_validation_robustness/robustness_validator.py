@@ -279,9 +279,13 @@ def _compute_stability_metrics(
 
     # Stability score: average of consistency scores minus CoV penalty (capped at 1)
     cov_penalty = min(impact_cov, 1.0)
-    raw_stability = (inf_consistency + vul_consistency) / 2.0 * (1.0 - 0.3 * cov_penalty)
     stability_score = float(np.clip(
-        np.nan_to_num(raw_stability, nan=0.0, posinf=1.0, neginf=0.0),
+        np.nan_to_num(
+            (inf_consistency + vul_consistency) / 2.0 * (1.0 - 0.3 * cov_penalty),
+            nan=0.0,
+            posinf=1.0,
+            neginf=0.0,
+        ),
         0.0,
         1.0,
     ))

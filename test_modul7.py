@@ -129,6 +129,9 @@ def _run_upstream_modules(root: Path) -> None:
                 "num_steps": 5,
                 "shock_magnitude": 1.0,
                 "top_n": 5,
+                # Use 0.0 (complete removal) intentionally: this matches test_modul5.py's
+                # explicit test scenario and produces intervention_results.json that downstream
+                # tests (Modules 6 & 7) depend on. DEFAULT_CONFIG uses 0.5 for production.
                 "node_attenuation_factor": 0.0,
                 "edge_attenuation_factor": 0.0,
                 "topk_control": 1,
