@@ -177,7 +177,7 @@ def _build_ancestor_set_W(
 
 
 def _compute_level_partition(
-    W: Set[Tuple[str, str]],
+    W: set[Tuple[str, str]],
 ) -> Dict[str, int]:
     """
     Assign each node in W a level equal to the length of its longest path from
@@ -193,7 +193,7 @@ def _compute_level_partition(
     -------
     dict mapping node → level index
     """
-    nodes: Set[str] = set()
+    nodes: set = set()
     for src, tgt in W:
         nodes.add(src)
         nodes.add(tgt)
@@ -241,7 +241,7 @@ def _compute_level_partition(
     return levels
 
 
-def _can_reach_via_E(source: str, target: str, E: Set[Tuple[str, str]]) -> bool:
+def _can_reach_via_E(source: str, target: str, E: set[Tuple[str, str]]) -> bool:
     """
     Check whether ``target`` is reachable from ``source`` through the edges
     already in E (the partial edge set being built by Algorithm 1).
@@ -254,7 +254,7 @@ def _can_reach_via_E(source: str, target: str, E: Set[Tuple[str, str]]) -> bool:
     for s, t in E:
         adj.setdefault(s, []).append(t)
 
-    visited: Set[str] = set()
+    visited: set = set()
     stack: List[str] = [source]
 
     while stack:
@@ -270,7 +270,7 @@ def _can_reach_via_E(source: str, target: str, E: Set[Tuple[str, str]]) -> bool:
 
 
 def _pairwise_recovery_algorithm1(
-    W: Set[Tuple[str, str]],
+    W: set[Tuple[str, str]],
     f_stats: Dict[Tuple[str, str], float],
     grade: str,
 ) -> Tuple[List[Tuple[str, str]], Dict[str, int]]:
@@ -318,8 +318,8 @@ def _pairwise_recovery_algorithm1(
     for node, lev in levels.items():
         P.setdefault(lev, []).append(node)
 
-    W_set: Set[Tuple[str, str]] = set(W)
-    E: Set[Tuple[str, str]] = set()
+    W_set: set = set(W)
+    E: set = set()
 
     # Outer loop: for each level k ≥ 1 (target nodes j ∈ P_k)
     for k in range(1, max_level + 1):
