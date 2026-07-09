@@ -1,0 +1,108 @@
+# Review Komprehensif: Kesesuaian Modul 1–3 RiceEWS terhadap Kinnear & Mazumdar (2023)
+
+## Ringkasan Eksekutif
+
+Setelah menelusuri kode di `src/modules/preprocessing/`, `src/modules/causality_testing/`, dan `src/modules/module_03_network_inference/`, kesimpulannya: **implementasi TIDAK mengikuti metodologi paper secara penuh**. Modul 2 (uji pairwise Granger) sudah cukup dekat dengan konsep dasar paper, tetapi **bagian paling inti dari kontribusi paper — Algoritma 1 (Pairwise Recovery / transitive reduction) — sama sekali tidak diimplementasikan**. Modul 3 menggantinya dengan heuristik ad hoc (cycle-breaking berbasis bobot terkecil + filter in-degree≤1) yang **secara konseptual berbeda** dan, pada satu titik, **salah mendefinisikan istilah "polytree" itu sendiri**.
+
+| Modul | Klaim | Kesesuaian aktual |
+|---|---|---|
+| 1 – Preprocessing | "Ready untuk Granger causality testing" | Sebagian sesuai — bukan bagian formal teori paper, tapi ada isu metodologis (double-detrending) |
+| 2 – Pairwise Granger Test | "Reference: Kinnear & Mazumdar (2023)" | **Konsep dasar benar** (uji pairwise unconditional via F-test), tapi hasilnya langsung diperlakukan sebagai edge langsung (bukan ancestor set W) |
+| 3 – Network Inference | Mengklaim menghasilkan graf DAG/polytree final | **Algoritma 1 tidak ada.** Diganti cycle-breaking + filter in-degree yang tidak berdasar paper, dan definisi polytree yang salah |
+
+---
+
+## 1. Modul Preprocessing (`data_preprocessor.py`)
+
+**Yang sudah sesuai:**
+- Data diperlakukan per time series individual (per market–grade), sejalan dengan kerangka WSS $x(n)$ di Definisi 2.1.
+- Uji stasioneritas (ADF/KPSS) relevan karena paper mensyaratkan proses WSS dengan representasi VAR(∞) yang invertible (Def. 2.1), meski paper sendiri tidak menyebut prosedur preprocessing spesifik — itu memang di luar cakupan teori, jadi wajar.
+
+**Masalah yang ditemukan:**
+
+1. **Double-detrending berpotensi over-differencing.** Pipeline: `price_log → detrend_data (linear) → apply_differencing (order 1) → standardize`. Melakukan *detrending linear* **lalu** *differencing* pada data yang sama adalah redundan — differencing order-1 sudah menghilangkan tren linear. Melakukan keduanya secara berurutan bisa mendistorsi struktur autokorelasi yang justru dibutuhkan oleh uji Granger (residual menjadi terlalu "putih", sehingga uji power menurun atau relasi kausal asli hilang). Paper tidak pernah mensyaratkan detrending eksplisit sebelum differencing — representasi VAR(∞)/MA(∞) di paper mengasumsikan mean-zero WSS, bukan trend-stationary yang perlu dua kali "dibersihkan".
+
+2. **Standardisasi (z-score) setelah differencing tidak berdampak pada hasil uji Granger F-test** — F-test OLS invariant terhadap penskalaan linear. Langkah ini tidak salah, tapi berlebihan/tidak berpengaruh terhadap keputusan `granger_causes` di Modul 2.
+
+3. **Asumsi kunci Def. 2.1 (matriks kovarians noise $\Sigma_v$ diagonal & positive-definite, artinya *tidak ada instantaneous causality*) tidak pernah diverifikasi.** Ini memang sulit diuji langsung, tapi tidak ada catatan/asumsi eksplisit di kode maupun dokumentasi bahwa asumsi ini diterima begitu saja — penting karena seluruh Teorema 2.1–2.2 bergantung padanya.
+
+4. **Kode mati (dead code):** `time_series_processor.py` (`TimeSeriesProcessor`, 574 baris) adalah modul preprocessing paralel/duplikat yang **tidak pernah dipanggil** di pipeline manapun (`run_full_preprocessing_pipeline` memakai `DataPreprocessor`, bukan ini). Berpotensi membingungkan tim karena ada dua implementasi berbeda untuk tugas yang sama.
+
+---
+
+## 2. Modul Causality Testing (`granger_tester.py`, `polytree_validator.py`)
+
+### 2.1 `granger_tester.py` — Ini bagian yang **paling dekat** dengan paper
+
+**Yang sudah sesuai secara konsep:**
+- Uji dilakukan **per pasangan (i,j) tanpa kondisi terhadap node lain** — ini persis Definisi 2.7 (*Pairwise Granger causality*: "xj Granger-causes xi with respect **only to** (xi, xj)"). Model restricted (lag y saja) vs unrestricted (lag y + lag x) dan F-test klasik konsisten dengan Teorema 2.1(a)⇔(d) (perbandingan proyeksi $\hat H_{n-1}$ vs $\hat H^{(-j)}_{n-1}$).
+- Semua $N(N-1)$ pasangan diuji dua arah — memang begitu cara paper mendapatkan oracle $O(i,j)$ untuk membangun himpunan $W$.
+
+**Masalah yang ditemukan — cukup signifikan:**
+
+1. **Tidak ada koreksi multiple testing (FDR).** Paper eksplisit menyebut (Section 3): *"The heuristic is essentially controlling the false discovery rate substantially below what it would be with a threshold based pairwise scheme."* Referensi Benjamini & Hochberg (1995) bahkan ada di daftar pustaka paper, mengindikasikan heuristik sampel-terbatas mereka (Algorithm 2, Supplementary B.5) memakai kontrol FDR. Kode ini memakai **α=0.05 flat per-test** tanpa koreksi sama sekali. Untuk 6 pasar × 4 grade = 30 uji pairwise per grade, ini **melipatgandakan risiko false positive** secara signifikan dibanding heuristik yang dimaksud paper — dan false positive di tahap ini langsung menular ke Modul 3 karena tidak ada tahap reduksi.
+
+2. **Hasil pairwise langsung dijadikan "edge" di `build_causal_matrix()`**, bukan diperlakukan sebagai kandidat relasi *ancestor*. Ini adalah **kesalahan konseptual paling mendasar**: menurut Proposition 2.6 dan Lemma D.5, uji pairwise yang lolos ($i \xrightarrow{PW} j$) mengindikasikan $i \in \mathcal{A}(j)$ — yaitu **ancestor**, bukan *parent langsung*. Himpunan hasil pairwise ini disebut $W$ di paper, dan $W$ **secara sengaja mengandung banyak edge transitif palsu** (lihat Contoh 2.4 & Gambar 4 paper — edge $1\to4$ dan $1\to5$ muncul di $W$ padahal jalur asli hanya $1\to3\to4$/$1\to3\to5$). Modul 2 tidak membedakan ini — ia langsung menamai `matrix[i,j]=1` sebagai relasi kausal final di `causal_matrix`, `out_degree`, `in_degree`, dan `identify_market_leaders`. Artinya **"market leaders" yang dihasilkan sudah bias oleh edge transitif palsu, bahkan sebelum Modul 3 dijalankan.**
+
+### 2.2 `polytree_validator.py` — **Definisi polytree yang salah** & modul mati (tidak dipakai)
+
+1. **Kesalahan definisi fundamental.** Kode mendefinisikan:
+   > "Polytree adalah DAG di mana setiap node memiliki paling banyak satu parent" (`max_parents <= 1`, docstring, `_calculate_strong_causality_score`)
+
+   Ini **bukan** definisi polytree menurut paper. Definisi 2.9 (Strongly Causal / SCG): *"there is at most one directed path between any two nodes"* — yaitu **kerangka tak-berarah (underlying skeleton) dari graf harus berupa forest (tidak ada cycle tak-berarah)**. Paper eksplisit memberi contoh strongly causal graph dengan **node berparent ganda**: *"the diamond shaped graph containing $i\to j\leftarrow k$"* (Section 2.5), dan Gambar 1(a)/Contoh 2.4 (Gambar 4) menunjukkan node 4 punya dua parent (2 dan 3) sebagai bagian dari polytree yang sah.
+
+   Akibatnya:
+   - `PolytreeValidator.validate_polytree()` akan **salah mengklasifikasikan** graf strongly-causal yang sah (mis. struktur diamond/berlian, yang menurut paper justru contoh utama SCG) sebagai "bukan polytree".
+   - `PolytreeOptimizer.reduce_multiple_parents()` — jika dipanggil — akan **secara aktif merusak struktur SCG yang valid** dengan memotong parent kedua pada node manapun yang punya >1 parent, padahal paper menyebut jenis struktur itu justru **diinginkan** dan tetap dapat direkonstruksi sempurna oleh Algoritma 1.
+
+2. **Modul ini tidak pernah dipakai (`grep` mengonfirmasi tidak ada import `PolytreeValidator`/`PolytreeOptimizer` di pipeline aktif).** `network_builder.py` (Modul 3) memiliki fungsi `_is_polytree()` sendiri yang **duplikat** — dan sialnya, duplikatnya memakai definisi yang **sama-sama salah** (`in-degree ≤ 1`). Jadi kesalahan definisi ini bukan cuma di file yang mati, tapi juga menular ke file yang aktif digunakan.
+
+---
+
+## 3. Modul Network Inference (`network_builder.py`) — Ini bagian dengan **deviasi terbesar**
+
+Ini seharusnya mengimplementasikan **Algoritma 1 (Pairwise Recovery)** — inti kontribusi teoritis paper (Teorema 2.2). Faktanya:
+
+### 3.1 Apa yang seharusnya terjadi (menurut paper)
+1. Bangun $W$ = himpunan ancestor dari hasil pairwise (buang pasangan bidirectional, Corollary 2.3).
+2. Partisi node ke level $P_0, P_1, P_2, \dots$ berdasarkan struktur ancestor di $W$.
+3. Iterasi level demi level, **mundur** ($r = 1,\dots,k$), tambahkan edge $(i,j)$ ke $E$ **hanya jika** tidak ada node perantara $m$ dengan $(i,m),(m,j)\in W$ yang sudah membuatnya redundan (reduksi transitif) — inilah yang mengeliminasi edge palsu seperti $1\to4$ pada Contoh 2.4.
+4. Hasil akhir $E$ = graf kausalitas asli, bukan sekadar $W$.
+
+### 3.2 Apa yang benar-benar dilakukan kode
+
+1. **Tidak ada reduksi transitif sama sekali.** Fungsi `_extract_edges_for_grade()` mengambil semua pasangan `granger_causes=True` dari Modul 2 (yaitu $W$, bukan $E$) dan langsung memperlakukannya sebagai `network_edges.csv` final — hanya dikurangi oleh langkah cycle-breaking (lihat di bawah). Tidak ada partisi level ($P_0, P_1, \dots$), tidak ada pengecekan "apakah $(i,j)$ adalah konsekuensi transitif dari edge lain di $W$". Ini justru **kegagalan yang secara eksplisit diperingatkan paper sendiri** di Contoh 2.4: *"if instead we simply added the set $D_k' = (\bigcup P_{k-r})\times P_k$ … then we would infer the false positive edge $1\to4$."* — dan itulah persis apa yang dilakukan Modul 3.
+
+2. **Cycle-breaking greedy (`_break_cycles_greedy`) tidak berasal dari paper.** Paper mengasumsikan graf kausalitas Granger sendiri sudah berupa DAG/polytree secara struktural (properti sistem, bukan hasil pembersihan data) — algoritmanya tidak pernah "memotong" edge untuk memaksa graf hasil observasi menjadi asiklik. Menghapus edge terlemah dalam siklus adalah heuristik yang masuk akal secara praktis, tapi **tidak dilandasi teori manapun di paper** dan seharusnya tidak dinamai sebagai bagian dari "MODUL 3 – Network Inference" berbasis Kinnear-Mazumdar tanpa disclaimer bahwa ini tambahan di luar paper.
+
+3. **Tidak ada penanganan confounder / edge bidirectional (Corollary 2.3, Remark 2.5).** Paper eksplisit: jika $i\xrightarrow{PW}j$ **dan** $j\xrightarrow{PW}i$ (dua arah signifikan), pada graf strongly causal ini **pasti** hasil confounder, dan **kedua** arah harus dibuang (bukan disimpan salah satu). Di kode, pasangan bidirectional justru terdeteksi sebagai "cycle" 2-node oleh `_detect_cycle`, lalu `_break_cycles_greedy` **mempertahankan satu arah** (yang F-statistiknya lebih besar) — ini **bertentangan langsung** dengan Remark 2.5 paper, yang menyatakan kedua arah sama-sama bukan edge kausal langsung yang valid.
+
+4. **Validasi polytree dilakukan pasif, setelah data sudah "dirusak" oleh cycle-breaking**, bukan sebagai pra-syarat struktural yang diverifikasi dulu (seperti pendekatan paper terhadap graf regulasi gen E. coli di Contoh 2.1, yang mengecek dulu seberapa dekat graf riil dengan SCG sebelum mempercayai hasil pairwise recovery).
+
+5. **"Leader score" (`weighted_out_degree + out_degree - in_degree`) adalah metrik buatan proyek ini sendiri**, tidak didefinisikan di paper manapun. Ini boleh-boleh saja sebagai lapisan aplikasi tambahan, tapi jangan dikira berasal dari metodologi Kinnear-Mazumdar — sebaiknya didokumentasikan eksplisit sebagai heuristik tambahan RiceEWS.
+
+---
+
+## Tabel Perbedaan & Rekomendasi Perbaikan
+
+| # | Area | Perbedaan dari paper | Dampak | Rekomendasi |
+|---|---|---|---|---|
+| 1 | Preprocessing | Detrend linear **dan** differencing order-1 dilakukan berurutan pada seri yang sama | Berpotensi over-differencing, melemahkan sinyal kausal asli | Pilih salah satu: detrend **atau** diff (order-1 differencing biasanya cukup untuk data harga log) |
+| 2 | Preprocessing | `time_series_processor.py` duplikat, tidak dipakai | Membingungkan, tidak berdampak langsung ke hasil | Hapus atau gabungkan ke `data_preprocessor.py` |
+| 3 | Granger testing | Tidak ada koreksi FDR/multiple testing lintas $N(N-1)$ pasangan | Inflasi false discovery rate — bertentangan langsung dengan penekanan paper Section 3 | Tambahkan Benjamini-Hochberg (atau kontrol serupa) di `test_all_pairwise_relationships` |
+| 4 | Granger testing | Hasil pairwise langsung dianggap edge langsung (`causal_matrix`) | Konflik konseptual utama — mencampur $W$ (ancestor) dengan $E$ (edge langsung) sejak awal | Rename `causal_matrix` → `pairwise_ancestor_matrix` (=$W$); jangan hitung "market leader" dari sini, tunda ke setelah reduksi transitif |
+| 5 | Polytree definisi | `max_parents ≤ 1` dipakai sebagai syarat "polytree" di dua tempat (`polytree_validator.py` & `network_builder.py`) | Salah secara matematis — menolak struktur SCG sah (diamond/multi-parent), berlawanan dengan Def. 2.9 & contoh eksplisit paper | Ganti dengan cek: graf tak-berarah (underlying skeleton, abaikan arah) dari $E$ tidak boleh punya cycle → gunakan `nx.is_forest(G.to_undirected())` setelah AND dengan `is_directed_acyclic_graph` |
+| 6 | Network inference | **Algoritma 1 (transitive reduction via level partition) tidak diimplementasikan sama sekali** | Ini pelanggaran paling besar — hasil akhir bukan graf kausal $E$ paper, melainkan $W$ yang sudah dipotong siklus secara ad hoc | Implementasikan level partition ($P_0,P_1,\dots$ berdasar longest-path di $W$) + loop mundur $r=1..k$ mengecek redundansi transitif, sesuai Contoh 2.4 |
+| 7 | Network inference | Cycle-breaking berbasis bobot terkecil tidak berlandasan paper | Metode ad hoc dipasarkan seolah bagian dari metodologi Kinnear-Mazumdar | Beri label jelas "heuristik tambahan RiceEWS, di luar paper", atau lebih baik: ganti dengan deteksi & pembuangan pasangan bidirectional (langkah 8) SEBELUM cycle-breaking apapun |
+| 8 | Network inference | Edge bidirectional tidak dibuang keduanya (hanya salah satu disimpan via cycle-breaking) | Bertentangan langsung dengan Corollary 2.3 / Remark 2.5 | Sebelum langkah lain: untuk setiap pasangan $(i,j)$ dengan $O(i,j)=O(j,i)=1$, buang **kedua** arah dari $W$ |
+| 9 | Umum | Tidak ada pengecekan Assumption 2.1 (no-cancellation) atau Definisi 2.11 (persistence) | Minor untuk aplikasi praktis, tapi tak ada disclaimer bahwa garansi eksak Teorema 2.2 tidak berlaku tanpa ini | Tambahkan catatan di dokumentasi/README bahwa hasil bersifat heuristik, bukan garansi exact-recovery, kecuali asumsi ini diverifikasi |
+
+---
+
+## Kesimpulan
+
+- **Modul 1**: sesuai secara umum sebagai preprocessing praktis, tapi ada isu metodologis (double-detrending) yang layak diperbaiki; tidak fatal terhadap kesesuaian dengan paper karena paper memang tidak mendefinisikan preprocessing.
+- **Modul 2**: fondasi pengujian pairwise-nya **benar secara konsep** (unconditional pairwise F-test sesuai Definisi 2.7), tapi cacat karena **tidak membedakan hasil pairwise (=$W$/ancestor) dari edge langsung (=$E$)**, dan **tidak mengontrol FDR** seperti ditekankan paper.
+- **Modul 3**: **paling tidak sesuai**. Nama modul menyiratkan implementasi Algoritma 1, tapi **transitive reduction — inti dari kontribusi utama paper — sama sekali tidak ada**. Sebagai gantinya dipakai cycle-breaking ad hoc dan filter "polytree" yang **secara matematis salah** (mendefinisikan polytree sebagai in-tree berparent tunggal, padahal paper eksplisit mengizinkan multi-parent selama tidak ada cycle tak-berarah).
+
+Untuk benar-benar "mengikuti paper Kinnear secara penuh", prioritas perbaikan tertinggi adalah **#5 dan #6** (definisi polytree + implementasi Algoritma 1 yang sebenarnya), karena tanpa itu, output akhir sistem bukanlah graf kausalitas Granger yang direkonstruksi ala Kinnear-Mazumdar, melainkan graf ancestor mentah yang dipangkas siklus secara heuristik.
