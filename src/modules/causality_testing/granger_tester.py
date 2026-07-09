@@ -83,6 +83,61 @@ def _benjamini_hochberg(p_values: np.ndarray, alpha: float = 0.05) -> np.ndarray
     return result
 
 
+def _parse_granger_flag(value) -> bool:
+    """Parse native or legacy serialized Granger boolean values safely."""
+
+    if isinstance(value, (bool, np.bool_)):
+        return bool(value)
+    if value is None:
+        return False
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "false"}:
+            return normalized == "true"
+    raise ValueError(f"Invalid granger_causes value: {value!r}")
+
+
+def _make_node_id(market_id: int, grade: str) -> str:
+    return f"M{int(market_id)}_{grade}"
+
+
+def _split_node_id(node_id: str) -> Tuple[int, str]:
+    if not str(node_id).startswith("M") or "_" not in str(node_id):
+        raise ValueError(f"Invalid node identifier: {node_id}")
+    market_part, grade = str(node_id)[1:].split("_", 1)
+    return int(market_part), grade
+
+
+def _relation_key(source_node: str, target_node: str) -> str:
+    return f"{source_node}→{target_node}"
+
+
+def _parse_relation_nodes(relation: str) -> Tuple[str, str]:
+    rel = str(relation).replace("->", "→")
+    if "→" not in rel:
+        raise ValueError(f"Invalid relation format: {relation}")
+    source, target = rel.split("→", 1)
+    return source.strip(), target.strip()
+
+
+def _to_json_compatible(value):
+    if isinstance(value, dict):
+        return {str(k): _to_json_compatible(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_to_json_compatible(v) for v in value]
+    if isinstance(value, tuple):
+        return [_to_json_compatible(v) for v in value]
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if isinstance(value, np.bool_):
+        return bool(value)
+    if isinstance(value, np.integer):
+        return int(value)
+    if isinstance(value, np.floating):
+        return float(value)
+    return value
+
+
 class GrangerCausalityTester:
     """
     Granger causality testing untuk rice market price relationships.
@@ -514,7 +569,7 @@ class GrangerCausalityTester:
 
     def build_pairwise_ancestor_matrix(self,
                                        grade_results: Dict,
-                                       markets: List[int]) -> np.ndarray:
+                                       nodes: List[str]) -> np.ndarray:
         """
         Build pairwise ancestor adjacency matrix W dari test results.
 
@@ -531,26 +586,23 @@ class GrangerCausalityTester:
         ----------
         grade_results : dict
             Pairwise test results from ``test_all_pairwise_relationships``.
-        markets : list of int
-            Ordered list of market IDs.
+        nodes : list of str
+            Ordered list of integrated node identifiers.
 
         Returns
         -------
         np.ndarray
             N×N binary ancestor matrix W.
         """
-        n = len(markets)
+        n = len(nodes)
         matrix = np.zeros((n, n))
-        market_idx = {m: i for i, m in enumerate(markets)}
+        node_idx = {node: i for i, node in enumerate(nodes)}
 
         for key, result in grade_results.items():
-            if result.get('granger_causes', False):
-                parts = key.split('→')
-                x_market = int(parts[0][1:])
-                y_market = int(parts[1][1:])
-
-                i = market_idx[y_market]
-                j = market_idx[x_market]
+            if _parse_granger_flag(result.get('granger_causes', False)):
+                source_node, target_node = _parse_relation_nodes(key)
+                i = node_idx[target_node]
+                j = node_idx[source_node]
                 matrix[i, j] = 1
 
         return matrix
@@ -621,7 +673,7 @@ class GrangerCausalityTester:
 
     def identify_market_leaders(self,
                                 causal_matrix: np.ndarray,
-                                markets: List[int]) -> List[int]:
+                                markets: List[str]) -> List[str]:
         """Identify market leaders based on out-degree."""
 
         out_degrees = self.get_market_out_degree(causal_matrix, markets)
@@ -636,7 +688,7 @@ class GrangerCausalityTester:
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         with open(output_path, 'w', encoding='utf-8') as f:
-            json.dump(all_results, f, indent=2, default=str)
+            json.dump(_to_json_compatible(all_results), f, indent=2)
 
         if self.verbose:
             print(f"✓ Saved JSON to: {output_path}")
@@ -646,40 +698,45 @@ class GrangerCausalityTester:
     def save_as_csv(self,
                     all_results: Dict,
                     output_dir: str) -> List[Path]:
-        """Save results as CSV files (one per grade)."""
+        """Save integrated pairwise Granger results as CSV."""
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
-        saved_files = []
+        pairwise_data = []
 
-        for grade, grade_data in all_results.items():
-            pairwise_data = []
-            for relationship, test_result in grade_data['pairwise_tests'].items():
-                pairwise_data.append({
-                    'Grade': grade,
-                    'Relationship': relationship,
-                    'F_Statistic': test_result.get('f_statistic'),
-                    'P_Value': test_result.get('p_value'),
-                    'Granger_Causes': test_result.get('granger_causes', False),
-                    'Lag_Order': test_result.get('lag_order'),
-                    'N_Observations': test_result.get('n_observations'),
-                    'R2_Restricted': test_result.get('r2_restricted'),
-                    'R2_Augmented': test_result.get('r2_augmented')
-                })
+        for relationship, test_result in all_results['pairwise_tests'].items():
+            source_node, target_node = _parse_relation_nodes(relationship)
+            source_market, source_grade = _split_node_id(source_node)
+            target_market, target_grade = _split_node_id(target_node)
+            pairwise_data.append({
+                'source': source_market,
+                'target': target_market,
+                'grade_source': source_grade,
+                'grade_target': target_grade,
+                'source_node': source_node,
+                'target_node': target_node,
+                'granger_causes': _parse_granger_flag(test_result.get('granger_causes', False)),
+                'lag': test_result.get('lag_order'),
+                'p_value': test_result.get('p_value'),
+                'adjusted_p_value': test_result.get('p_value_bh'),
+                'test_statistic': test_result.get('f_statistic'),
+                'n_observations': test_result.get('n_observations'),
+                'r2_restricted': test_result.get('r2_restricted'),
+                'r2_augmented': test_result.get('r2_augmented'),
+            })
 
-            df_pairwise = pd.DataFrame(pairwise_data)
-            pairwise_path = output_dir / f"granger_pairwise_{grade}.csv"
-            df_pairwise.to_csv(pairwise_path, index=False)
-            saved_files.append(pairwise_path)
+        df_pairwise = pd.DataFrame(pairwise_data)
+        pairwise_path = output_dir / "granger_pairwise.csv"
+        df_pairwise.to_csv(pairwise_path, index=False)
 
-            if self.verbose:
-                print(f"✓ Saved pairwise CSV to: {pairwise_path}")
+        if self.verbose:
+            print(f"✓ Saved pairwise CSV to: {pairwise_path}")
 
-        return saved_files
+        return [pairwise_path]
 
     def save_as_excel(self,
                       all_results: Dict,
                       output_path: str) -> Path:
-        """Save results as Excel with multiple sheets."""
+        """Save integrated results as Excel with multiple sheets."""
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -691,48 +748,35 @@ class GrangerCausalityTester:
             return None
 
         with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
-            summary_data = []
-            for grade, grade_data in all_results.items():
-                out_degrees = grade_data.get('preliminary_out_degrees', grade_data.get('out_degrees', {}))
-                in_degrees = grade_data.get('preliminary_in_degrees', grade_data.get('in_degrees', {}))
-                leaders = grade_data.get('preliminary_market_leaders', grade_data.get('market_leaders', []))
+            node_rows = []
+            leaders = all_results.get('preliminary_market_leaders', [])
+            out_degrees = all_results.get('preliminary_out_degrees', {})
+            in_degrees = all_results.get('preliminary_in_degrees', {})
+            for rank, node in enumerate(leaders, start=1):
+                market_id, grade = _split_node_id(node)
+                node_rows.append({
+                    'node': node,
+                    'market_id': market_id,
+                    'grade': grade,
+                    'W_out_degree': out_degrees.get(node, 0),
+                    'W_in_degree': in_degrees.get(node, 0),
+                    'preliminary_leader_rank': rank,
+                })
 
-                for market in sorted(out_degrees.keys()):
-                    summary_data.append({
-                        'Grade': grade,
-                        'Market': market,
-                        'W_Out_Degree': out_degrees[market],
-                        'W_In_Degree': in_degrees[market],
-                        'Preliminary_Leader_Rank': leaders.index(market) + 1 if market in leaders else None
-                    })
+            pd.DataFrame(node_rows).to_excel(writer, sheet_name='Summary', index=False)
+            self.save_as_csv(all_results, str(output_path.parent))
+            pd.read_csv(output_path.parent / "granger_pairwise.csv").to_excel(
+                writer,
+                sheet_name='PairwiseTests',
+                index=False,
+            )
 
-            df_summary = pd.DataFrame(summary_data)
-            df_summary.to_excel(writer, sheet_name='Summary', index=False)
-
-            for grade, grade_data in all_results.items():
-                pairwise_data = []
-                for relationship, test_result in grade_data['pairwise_tests'].items():
-                    pairwise_data.append({
-                        'Relationship': relationship,
-                        'F_Statistic': test_result.get('f_statistic'),
-                        'P_Value': test_result.get('p_value'),
-                        'Granger_Causes': test_result.get('granger_causes', False),
-                        'Lag_Order': test_result.get('lag_order'),
-                        'N_Obs': test_result.get('n_observations')
-                    })
-
-                df_pairwise = pd.DataFrame(pairwise_data)
-                sheet_name = f"Pairwise_{grade}"[:31]
-                df_pairwise.to_excel(writer, sheet_name=sheet_name, index=False)
-
-            for grade, grade_data in all_results.items():
-                # Fix #4: use pairwise_ancestor_matrix, fall back to causal_matrix for compat
-                ancestor_matrix = np.array(
-                    grade_data.get('pairwise_ancestor_matrix', grade_data.get('causal_matrix', []))
-                )
-                df_matrix = pd.DataFrame(ancestor_matrix)
-                sheet_name = f"AncestorMatrix_{grade}"[:31]
-                df_matrix.to_excel(writer, sheet_name=sheet_name, index=True)
+            node_labels = [node['node_id'] for node in all_results['nodes']]
+            ancestor_matrix = np.array(
+                all_results.get('pairwise_ancestor_matrix', all_results.get('causal_matrix', []))
+            )
+            df_matrix = pd.DataFrame(ancestor_matrix, index=node_labels, columns=node_labels)
+            df_matrix.to_excel(writer, sheet_name='AncestorMatrix', index=True)
 
         if self.verbose:
             print(f"✓ Saved Excel to: {output_path}")
@@ -742,15 +786,16 @@ class GrangerCausalityTester:
     def save_as_npz(self,
                     all_results: Dict,
                     output_path: str) -> Path:
-        """Save causal matrices as NumPy binary format."""
+        """Save integrated ancestor matrix as NumPy binary format."""
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        matrices_dict = {}
-        for grade, grade_data in all_results.items():
-            # Fix #4: use pairwise_ancestor_matrix, fall back to causal_matrix for compat
-            mat = grade_data.get('pairwise_ancestor_matrix', grade_data.get('causal_matrix', []))
-            matrices_dict[f"{grade}_pairwise_ancestor_matrix"] = np.array(mat)
+        matrices_dict = {
+            "integrated_pairwise_ancestor_matrix": np.array(
+                all_results.get('pairwise_ancestor_matrix', all_results.get('causal_matrix', []))
+            ),
+            "node_labels": np.array([node['node_id'] for node in all_results['nodes']], dtype=object),
+        }
 
         np.savez(output_path, **matrices_dict)
 
@@ -769,50 +814,43 @@ class GrangerCausalityTester:
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write("# Granger Causality Testing Results\n\n")
             f.write(
-                "> **Note**: Market rankings below are based on the **pairwise ancestor set W** "
-                "(all significant pairwise Granger relations).  W may contain transitive false "
-                "positives.  Authoritative market leaders based on the direct-edge graph E "
-                "are produced by Module 3 (Algorithm 1, transitive reduction).\n\n"
+                "> **Integrated workflow**: Module 2 produces one integrated ancestor set W "
+                "over nodes `(market_id, grade)`. Final direct edges are recovered only in "
+                "Module 3 via Algorithm 1.\n\n"
             )
             f.write("## Summary\n\n")
+            f.write("### Preliminary Node Rankings (based on W)\n\n")
+            f.write("| Rank | Node | Market | Grade | W-Out-Degree | W-In-Degree |\n")
+            f.write("|---|---|---:|---|---:|---:|\n")
+            leaders = all_results.get('preliminary_market_leaders', [])
+            out_degrees = all_results.get('preliminary_out_degrees', {})
+            in_degrees = all_results.get('preliminary_in_degrees', {})
+            for rank, node in enumerate(leaders, start=1):
+                market_id, grade = _split_node_id(node)
+                f.write(
+                    f"| {rank} | {node} | {market_id} | {grade} | "
+                    f"{out_degrees.get(node, 0)} | {in_degrees.get(node, 0)} |\n"
+                )
 
-            for grade, grade_data in all_results.items():
-                f.write(f"### Grade: {grade}\n\n")
+            f.write("\n### Significant Pairwise Relationships\n\n")
+            significant = [
+                (k, v) for k, v in all_results['pairwise_tests'].items()
+                if _parse_granger_flag(v.get('granger_causes', False))
+            ]
+            significant = sorted(significant, key=lambda x: x[1].get('f_statistic', 0), reverse=True)
 
-                leaders = grade_data.get('preliminary_market_leaders', grade_data.get('market_leaders', []))
-                out_degrees = grade_data.get('preliminary_out_degrees', grade_data.get('out_degrees', {}))
-                in_degrees = grade_data.get('preliminary_in_degrees', grade_data.get('in_degrees', {}))
-
-                f.write("#### Preliminary Market Rankings (based on W, see Note above)\n\n")
-                f.write("| Rank | Market | W-Out-Degree | W-In-Degree |\n")
-                f.write("|------|--------|------------|----------|\n")
-
-                for i, market in enumerate(leaders, 1):
-                    f.write(f"| {i} | M{market} | {out_degrees.get(market, 0)} | {in_degrees.get(market, 0)} |\n")
-
-                f.write("\n#### Significant Causal Relationships\n\n")
-                significant = [
-                    (k, v) for k, v in grade_data['pairwise_tests'].items()
-                    if v.get('granger_causes', False)
-                ]
-                significant = sorted(significant, key=lambda x: x[1].get('f_statistic', 0), reverse=True)
-
-                if significant:
-                    f.write("| Relationship | F-Statistic | P-Value (raw) | P-Value (BH) | Lag |\n")
-                    f.write("|---|---|---|---|---|\n")
-                    for relationship, test_result in significant:
-                        f_stat = test_result.get('f_statistic', '-')
-                        p_val = test_result.get('p_value', '-')
-                        p_bh = test_result.get('p_value_bh', '-')
-                        lag = test_result.get('lag_order', '-')
-                        p_val_str = f"{p_val:.4f}" if isinstance(p_val, float) else str(p_val)
-                        p_bh_str = f"{p_bh:.4f}" if isinstance(p_bh, float) else str(p_bh)
-                        f_str = f"{f_stat:.4f}" if isinstance(f_stat, float) else str(f_stat)
-                        f.write(f"| {relationship} | {f_str} | {p_val_str} | {p_bh_str} | {lag} |\n")
-                else:
-                    f.write("No significant relationships found.\n")
-
-                f.write("\n")
+            if significant:
+                f.write("| Relationship | F-Statistic | P-Value (raw) | P-Value (BH) | Lag |\n")
+                f.write("|---|---:|---:|---:|---:|\n")
+                for relationship, test_result in significant:
+                    f.write(
+                        f"| {relationship} | {float(test_result.get('f_statistic', 0.0)):.4f} | "
+                        f"{float(test_result.get('p_value', 1.0)):.6f} | "
+                        f"{float(test_result.get('p_value_bh', 1.0)):.6f} | "
+                        f"{int(test_result.get('lag_order', 0) or 0)} |\n"
+                    )
+            else:
+                f.write("No significant relationships found.\n")
 
         if self.verbose:
             print(f"✓ Saved Markdown to: {output_path}")
@@ -822,9 +860,9 @@ class GrangerCausalityTester:
     def visualize_network_graph(self,
                                 all_results: Dict,
                                 output_dir: str,
-                                markets: List[int],
+                                markets: List[str],
                                 format: str = 'html') -> List[Path]:
-        """Create interactive network graph visualization per grade."""
+        """Create integrated ancestor-network visualization."""
 
         try:
             import plotly.graph_objects as go
@@ -837,78 +875,73 @@ class GrangerCausalityTester:
         output_dir.mkdir(parents=True, exist_ok=True)
         saved_files = []
 
-        for grade, grade_data in all_results.items():
-            # Fix #4: use pairwise_ancestor_matrix, fall back to causal_matrix for compat
-            causal_matrix = np.array(
-                grade_data.get('pairwise_ancestor_matrix', grade_data.get('causal_matrix', []))
-            )
-            out_degrees = grade_data.get('preliminary_out_degrees', grade_data.get('out_degrees', {}))
+        causal_matrix = np.array(
+            all_results.get('pairwise_ancestor_matrix', all_results.get('causal_matrix', []))
+        )
+        out_degrees = all_results.get('preliminary_out_degrees', all_results.get('out_degrees', {}))
+        n_markets = len(markets)
+        pos_x = [np.cos(2 * np.pi * i / n_markets) for i in range(n_markets)]
+        pos_y = [np.sin(2 * np.pi * i / n_markets) for i in range(n_markets)]
 
-            n_markets = len(markets)
-            pos_x = [np.cos(2 * np.pi * i / n_markets) for i in range(n_markets)]
-            pos_y = [np.sin(2 * np.pi * i / n_markets) for i in range(n_markets)]
+        edge_trace_x = []
+        edge_trace_y = []
+        for i, _ in enumerate(markets):
+            for j, _ in enumerate(markets):
+                if causal_matrix[i, j] > 0:
+                    edge_trace_x.extend([pos_x[j], pos_x[i], None])
+                    edge_trace_y.extend([pos_y[j], pos_y[i], None])
 
-            edge_trace_x = []
-            edge_trace_y = []
+        edge_trace = go.Scatter(
+            x=edge_trace_x,
+            y=edge_trace_y,
+            mode='lines',
+            line=dict(width=0.5, color='#888'),
+            hoverinfo='none',
+            showlegend=False,
+        )
+        node_trace = go.Scatter(
+            x=pos_x,
+            y=pos_y,
+            mode='markers+text',
+            text=markets,
+            textposition="top center",
+            hoverinfo='text',
+            hovertext=[f"{node}<br>Influence: {out_degrees.get(node, 0)}" for node in markets],
+            marker=dict(
+                showscale=True,
+                color=[out_degrees.get(node, 0) for node in markets],
+                size=[20 + out_degrees.get(node, 0) * 4 for node in markets],
+                colorscale='YlOrRd',
+                line_width=2,
+            ),
+        )
 
-            for i, _ in enumerate(markets):
-                for j, _ in enumerate(markets):
-                    if causal_matrix[i, j] > 0:
-                        edge_trace_x.extend([pos_x[j], pos_x[i], None])
-                        edge_trace_y.extend([pos_y[j], pos_y[i], None])
-
-            edge_trace = go.Scatter(
-                x=edge_trace_x,
-                y=edge_trace_y,
-                mode='lines',
-                line=dict(width=0.5, color='#888'),
-                hoverinfo='none',
+        fig = go.Figure(
+            data=[edge_trace, node_trace],
+            layout=go.Layout(
+                title="Integrated Pairwise Ancestor Set W",
                 showlegend=False,
-            )
+                hovermode='closest',
+                margin=dict(b=20, l=5, r=5, t=40),
+                xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            ),
+        )
 
-            node_trace = go.Scatter(
-                x=pos_x,
-                y=pos_y,
-                mode='markers+text',
-                text=[f"M{m}" for m in markets],
-                textposition="top center",
-                hoverinfo='text',
-                hovertext=[f"Market {m}<br>Influence: {out_degrees[m]}" for m in markets],
-                marker=dict(
-                    showscale=True,
-                    color=[out_degrees[m] for m in markets],
-                    size=[30 + out_degrees[m] * 10 for m in markets],
-                    colorscale='YlOrRd',
-                    line_width=2,
-                ),
-            )
+        html_path = output_dir / "network_graph_integrated.html"
+        fig.write_html(str(html_path))
+        saved_files.append(html_path)
 
-            fig = go.Figure(
-                data=[edge_trace, node_trace],
-                layout=go.Layout(
-                    title=f"Causal Network - Grade: {grade}",
-                    showlegend=False,
-                    hovermode='closest',
-                    margin=dict(b=20, l=5, r=5, t=40),
-                    xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                    yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                ),
-            )
-
-            html_path = output_dir / f"network_graph_{grade}.html"
-            fig.write_html(str(html_path))
-            saved_files.append(html_path)
-
-            if self.verbose:
-                print(f"✓ Saved network graph (HTML) to: {html_path}")
+        if self.verbose:
+            print(f"✓ Saved network graph (HTML) to: {html_path}")
 
         return saved_files
 
     def visualize_heatmap(self,
                           all_results: Dict,
                           output_dir: str,
-                          markets: List[int]) -> List[Path]:
-        """Create heatmap visualization per grade."""
+                          markets: List[str]) -> List[Path]:
+        """Create integrated ancestor-matrix heatmap."""
 
         try:
             import plotly.graph_objects as go
@@ -921,46 +954,44 @@ class GrangerCausalityTester:
         output_dir.mkdir(parents=True, exist_ok=True)
         saved_files = []
 
-        for grade, grade_data in all_results.items():
-            # Fix #4: use pairwise_ancestor_matrix, fall back to causal_matrix for compat
-            causal_matrix = np.array(
-                grade_data.get('pairwise_ancestor_matrix', grade_data.get('causal_matrix', []))
+        causal_matrix = np.array(
+            all_results.get('pairwise_ancestor_matrix', all_results.get('causal_matrix', []))
+        )
+
+        fig = go.Figure(
+            data=go.Heatmap(
+                z=causal_matrix,
+                x=markets,
+                y=markets,
+                colorscale='Blues',
+                text=causal_matrix,
+                texttemplate='%{text}',
+                textfont={"size": 12},
+                colorbar=dict(title="Ancestor<br>Relation"),
             )
+        )
 
-            fig = go.Figure(
-                data=go.Heatmap(
-                    z=causal_matrix,
-                    x=[f"M{m}" for m in markets],
-                    y=[f"M{m}" for m in markets],
-                    colorscale='Blues',
-                    text=causal_matrix,
-                    texttemplate='%{text}',
-                    textfont={"size": 12},
-                    colorbar=dict(title="Causal<br>Relationship"),
-                )
-            )
+        fig.update_layout(
+            title="Integrated Pairwise Ancestor Matrix W",
+            xaxis_title="Source node",
+            yaxis_title="Target node",
+            height=800,
+            width=900,
+        )
 
-            fig.update_layout(
-                title=f"Causal Adjacency Matrix - Grade: {grade}",
-                xaxis_title="Source Market (causes →)",
-                yaxis_title="Target Market (← affected)",
-                height=600,
-                width=700,
-            )
+        html_path = output_dir / "heatmap_integrated.html"
+        fig.write_html(str(html_path))
+        saved_files.append(html_path)
 
-            html_path = output_dir / f"heatmap_{grade}.html"
-            fig.write_html(str(html_path))
-            saved_files.append(html_path)
-
-            if self.verbose:
-                print(f"✓ Saved heatmap (HTML) to: {html_path}")
+        if self.verbose:
+            print(f"✓ Saved heatmap (HTML) to: {html_path}")
 
         return saved_files
 
     def visualize_rankings(self,
                            all_results: Dict,
                            output_dir: str) -> List[Path]:
-        """Create bar chart for market leaders ranking per grade."""
+        """Create integrated ranking chart."""
 
         try:
             import plotly.graph_objects as go
@@ -973,51 +1004,50 @@ class GrangerCausalityTester:
         output_dir.mkdir(parents=True, exist_ok=True)
         saved_files = []
 
-        for grade, grade_data in all_results.items():
-            out_degrees = grade_data['out_degrees']
-            in_degrees = grade_data['in_degrees']
-            markets = sorted(out_degrees.keys())
+        out_degrees = all_results['out_degrees']
+        in_degrees = all_results['in_degrees']
+        markets = list(all_results['preliminary_market_leaders'])
 
-            fig = go.Figure()
-            fig.add_trace(
-                go.Bar(
-                    x=[f"M{m}" for m in markets],
-                    y=[out_degrees[m] for m in markets],
-                    name='Out-Degree (Influence)',
-                    marker_color='lightblue',
-                )
+        fig = go.Figure()
+        fig.add_trace(
+            go.Bar(
+                x=markets,
+                y=[out_degrees[m] for m in markets],
+                name='Out-Degree (W)',
+                marker_color='lightblue',
             )
-            fig.add_trace(
-                go.Bar(
-                    x=[f"M{m}" for m in markets],
-                    y=[in_degrees[m] for m in markets],
-                    name='In-Degree (Susceptibility)',
-                    marker_color='lightcoral',
-                )
+        )
+        fig.add_trace(
+            go.Bar(
+                x=markets,
+                y=[in_degrees[m] for m in markets],
+                name='In-Degree (W)',
+                marker_color='lightcoral',
             )
+        )
 
-            fig.update_layout(
-                title=f"Market Leaders Ranking - Grade: {grade}",
-                xaxis_title="Market",
-                yaxis_title="Degree Score",
-                barmode='group',
-                height=500,
-                width=900,
-            )
+        fig.update_layout(
+            title="Integrated Preliminary Node Ranking",
+            xaxis_title="Node",
+            yaxis_title="Degree",
+            barmode='group',
+            height=500,
+            width=1200,
+        )
 
-            html_path = output_dir / f"ranking_{grade}.html"
-            fig.write_html(str(html_path))
-            saved_files.append(html_path)
+        html_path = output_dir / "ranking_integrated.html"
+        fig.write_html(str(html_path))
+        saved_files.append(html_path)
 
-            if self.verbose:
-                print(f"✓ Saved ranking chart (HTML) to: {html_path}")
+        if self.verbose:
+            print(f"✓ Saved ranking chart (HTML) to: {html_path}")
 
         return saved_files
 
     def save_results_all_formats(self,
                                  all_results: Dict,
                                  output_dir: str,
-                                 markets: List[int]) -> Dict[str, Path]:
+                                 markets: List[str]) -> Dict[str, Path]:
         """Save results in ALL formats (JSON, CSV, Excel, NPZ, Markdown, Visualizations)."""
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -1088,19 +1118,7 @@ def run_full_granger_analysis(input_file: str,
     Returns
     -------
     dict
-        Hasil lengkap per grade.  Setiap grade entry berisi:
-
-        - ``pairwise_tests``: hasil uji pairwise, masing-masing meliputi
-          ``granger_causes`` (bool, berdasarkan p-value terkoreksi BH jika
-          ``apply_fdr=True``), ``f_statistic``, ``p_value`` (raw),
-          dan ``p_value_bh`` (BH-adjusted, jika apply_fdr=True).
-        - ``pairwise_ancestor_matrix``: matriks W (N×N) — pairwise ancestor
-          set.  **Bukan** graf kausal langsung; berisi false positive transitif.
-          Graf kausal langsung E diperoleh di MODUL 3 via Algorithm 1.
-        - ``causal_matrix``: alias deprecated dari ``pairwise_ancestor_matrix``.
-        - ``preliminary_out_degrees``, ``preliminary_in_degrees``,
-          ``preliminary_market_leaders``: metrik berbasis W (preliminary only;
-          lihat MODUL 3 untuk market leaders final berbasis E).
+        Hasil lengkap terintegrasi untuk seluruh node ``(market_id, grade)``.
     """
     if config is None:
         config = {
@@ -1125,60 +1143,109 @@ def run_full_granger_analysis(input_file: str,
     tester = GrangerCausalityTester(verbose=True)
     df = tester.load_preprocessed_data(input_file)
 
-    all_results = {}
-    markets = sorted(df['market_id'].unique().tolist())
-
-    for grade in sorted(df['grade'].unique()):
-        print(f"\n{'='*70}")
-        print(f"PROCESSING GRADE: {grade}")
-        print(f"{'='*70}")
-
-        grade_results = tester.test_all_pairwise_relationships(
-            df,
-            grade,
-            lag_order=lag_order,
-            price_col=price_col,
-            auto_lag=auto_lag,
-            max_lag=max_lag,
-            lag_criterion=lag_criterion,
-            significance_level=significance_level,
-            apply_fdr=apply_fdr,
-        )
-
-        # Build pairwise ancestor matrix W (Fix #4: renamed from causal_matrix)
-        pairwise_ancestor_matrix = tester.build_pairwise_ancestor_matrix(grade_results, markets)
-        out_degrees = tester.get_market_out_degree(pairwise_ancestor_matrix, markets)
-        in_degrees = tester.get_market_in_degree(pairwise_ancestor_matrix, markets)
-        market_leaders = tester.identify_market_leaders(pairwise_ancestor_matrix, markets)
-
-        all_results[grade] = {
-            'pairwise_tests': grade_results,
-            # Fix #4: renamed key; causal_matrix kept as deprecated alias for backward compat
-            'pairwise_ancestor_matrix': pairwise_ancestor_matrix.tolist(),
-            'causal_matrix': pairwise_ancestor_matrix.tolist(),  # deprecated alias
-            # Preliminary metrics based on W (ancestor set), NOT the final graph E.
-            # Use Module 3 output for authoritative market leaders based on E.
-            'preliminary_out_degrees': out_degrees,
-            'preliminary_in_degrees': in_degrees,
-            'preliminary_market_leaders': market_leaders,
-            # Kept for backward compat with downstream consumers
-            'out_degrees': out_degrees,
-            'in_degrees': in_degrees,
-            'market_leaders': market_leaders,
-            'config': config,
+    node_frame = (
+        df[['market_id', 'grade']]
+        .drop_duplicates()
+        .sort_values(['market_id', 'grade'])
+        .reset_index(drop=True)
+    )
+    node_records = [
+        {
+            'node_id': _make_node_id(row.market_id, row.grade),
+            'market_id': int(row.market_id),
+            'grade': row.grade,
         }
+        for row in node_frame.itertuples(index=False)
+    ]
+    node_labels = [record['node_id'] for record in node_records]
+    pairwise_results: Dict[str, Dict] = {}
 
-        if tester.verbose:
-            print(f"\nPreliminary market rankings (from pairwise ancestor set W; "
-                  f"final rankings require Module 3 transitive reduction):")
-            for i, market in enumerate(market_leaders, 1):
-                print(f"  {i}. Market {market} (W-out-degree: {out_degrees[market]})")
+    print(f"\n{'='*70}")
+    print("PROCESSING INTEGRATED NODE GRAPH")
+    print(f"{'='*70}")
+    print(f"Nodes: {len(node_labels)}")
+    print(f"Pairwise tests: {len(node_labels) * (len(node_labels) - 1)}")
+
+    node_series = {
+        node['node_id']: tester.prepare_time_series(df, node['market_id'], node['grade'], price_col)
+        for node in node_records
+    }
+
+    for target in node_records:
+        target_node = target['node_id']
+        target_ts = node_series[target_node]
+        if auto_lag and target_ts is not None:
+            effective_lag = tester.select_optimal_lag(
+                target_ts,
+                max_lag=max_lag,
+                criterion=lag_criterion,
+            )
+        else:
+            effective_lag = lag_order
+
+        for source in node_records:
+            source_node = source['node_id']
+            if source_node == target_node:
+                continue
+
+            source_ts = node_series[source_node]
+            relation = _relation_key(source_node, target_node)
+            if target_ts is None or source_ts is None:
+                pairwise_results[relation] = {
+                    'granger_causes': False,
+                    'reason': 'insufficient_data',
+                }
+                continue
+
+            pairwise_results[relation] = tester.granger_causality_test(
+                target_ts,
+                source_ts,
+                effective_lag,
+                significance_level,
+            )
+
+    if apply_fdr:
+        keys_with_pval = [
+            key for key, value in pairwise_results.items()
+            if value.get('p_value') is not None
+        ]
+        if keys_with_pval:
+            p_values = np.array([pairwise_results[key]['p_value'] for key in keys_with_pval])
+            p_values_bh = _benjamini_hochberg(p_values, alpha=significance_level)
+            for key, adjusted in zip(keys_with_pval, p_values_bh):
+                pairwise_results[key]['p_value_bh'] = float(adjusted)
+                pairwise_results[key]['granger_causes'] = bool(adjusted < significance_level)
+
+    pairwise_ancestor_matrix = tester.build_pairwise_ancestor_matrix(pairwise_results, node_labels)
+    out_degrees = tester.get_market_out_degree(pairwise_ancestor_matrix, node_labels)
+    in_degrees = tester.get_market_in_degree(pairwise_ancestor_matrix, node_labels)
+    market_leaders = tester.identify_market_leaders(pairwise_ancestor_matrix, node_labels)
+
+    all_results = {
+        'analysis_type': 'integrated',
+        'nodes': node_records,
+        'pairwise_tests': pairwise_results,
+        'pairwise_ancestor_matrix': pairwise_ancestor_matrix.tolist(),
+        'causal_matrix': pairwise_ancestor_matrix.tolist(),
+        'preliminary_out_degrees': out_degrees,
+        'preliminary_in_degrees': in_degrees,
+        'preliminary_market_leaders': market_leaders,
+        'out_degrees': out_degrees,
+        'in_degrees': in_degrees,
+        'market_leaders': market_leaders,
+        'config': config,
+    }
+
+    if tester.verbose:
+        print("\nPreliminary node rankings (from integrated pairwise ancestor set W):")
+        for i, node in enumerate(market_leaders[:10], 1):
+            print(f"  {i}. {node} (W-out-degree: {out_degrees[node]})")
 
     print(f"\n{'='*70}")
     print("SAVING RESULTS IN MULTIPLE FORMATS + VISUALIZATIONS")
     print(f"{'='*70}")
 
-    tester.save_results_all_formats(all_results, output_dir, markets)
+    tester.save_results_all_formats(all_results, output_dir, node_labels)
 
     print(f"\n{'='*70}")
     print("GRANGER CAUSALITY ANALYSIS COMPLETE")
@@ -1190,8 +1257,8 @@ def run_full_granger_analysis(input_file: str,
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
-    input_file = "data/processed/preprocessed_pilot_data.csv"
-    output_dir = "data/processed"
+    input_file = "data/processed/module_01/preprocessed_pilot_data.csv"
+    output_dir = "data/processed/module_02"
 
     try:
         run_full_granger_analysis(
@@ -1208,4 +1275,4 @@ if __name__ == "__main__":
 
     except FileNotFoundError as e:
         print(f"Error: {e}")
-        print("Please ensure preprocessed data exists at: data/processed/preprocessed_pilot_data.csv")
+        print("Please ensure preprocessed data exists at: data/processed/module_01/preprocessed_pilot_data.csv")

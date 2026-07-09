@@ -1,45 +1,89 @@
 # RiceEWS
-Rice Early Warning System - A research framework for identifying market leaders in Indonesian rice price networks using Granger Causality and DAG analysis
 
-## Overview
-
-RiceEWS implements the methodology of **Kinnear & Mazumdar (2023)** — *"Exact recovery of Granger causality graphs with unconditional pairwise tests"* (Network Science 11(3), pp. 431–457) — applied to Indonesian rice market price data.
+RiceEWS implements Modules 1–3 of the Kinnear & Mazumdar (2023) workflow for Indonesian rice price data.
 
 ## Methodology
 
-### Pipeline
+### Integrated causal discovery
 
-| Module | Description |
-|--------|-------------|
-| 1 | Data preprocessing (log transform, differencing, stationarity test) |
-| 2 | Pairwise Granger causality testing with Benjamini-Hochberg FDR correction |
-| 3 | Network inference via Algorithm 1 (transitive reduction / Pairwise Recovery) |
-| 4 | Shock propagation simulation |
-| 5 | Intervention analysis |
-| 6 | Robustness validation |
-| 7 | Policy recommendations |
+The pipeline now uses **one integrated workflow** across all rice grades.
 
-### Key Methodological Notes
+- **Module 1** preprocesses the raw Excel dataset(s).
+- **Module 2** runs unconditional pairwise Granger tests over integrated nodes `(market_id, grade)` and produces **one ancestor matrix `W`**.
+- **Module 3** recovers **one integrated direct-edge graph** from `W` using **Algorithm 1 only**.
 
-1. **Module 2 — Pairwise Ancestor Set W**: The output of pairwise Granger tests is the *ancestor set W*, not the direct-edge graph. W may contain transitive false positives (e.g., if 1→3→4, then 1→4 also appears in W). Module 3 eliminates these.
+No direct-edge thresholding and no post-recovery shortcut heuristic is used in Module 3.
 
-2. **Module 3 — Algorithm 1 (Pairwise Recovery)**: Direct edges are recovered via transitive reduction using the level-partition algorithm of Kinnear & Mazumdar (2023). Bidirectional pairs are excluded as confounders (Corollary 2.3).
+### Node representation
 
-3. **Strongly Causal Graph (SCG) / Polytree**: A DAG whose *undirected skeleton* is a forest (Definition 2.9). This is *not* equivalent to "each node has at most one parent" — multi-parent v-structures are valid SCG nodes.
+Integrated nodes are encoded as:
 
-4. **FDR Correction**: Benjamini-Hochberg correction is applied across all N(N-1) pairwise tests per grade, consistent with Section 3 of Kinnear & Mazumdar (2023).
+- `M101_low1`
+- `M101_low2`
+- `M101_med1`
+- `M101_med2`
 
-5. **Preprocessing**: Linear detrending is disabled by default when order-1 differencing is active, since differencing already removes a linear trend (applying both causes over-differencing).
+This allows both:
 
-### Theoretical Assumptions
+- within-grade edges
+- cross-grade edges
 
-The exact-recovery guarantee (Theorem 2.2) requires:
-- The true causal graph is a **strongly causal DAG** (Definition 2.9)
-- **Assumption 2.1**: Noise covariance matrix Σ_v is diagonal (no instantaneous causality)
-- No-cancellation (Assumption 2.1) and persistence (Definition 2.11) conditions
+when supported by the data and the pairwise tests.
 
-For real-world rice market data these assumptions may hold approximately rather than exactly. Results should be interpreted as **heuristic estimates** of the causal structure, not as guaranteed exact recovery unless the assumptions are verified.
+## Output folders
+
+Modules 1–3 write to dedicated output folders under `data/processed/`:
+
+- `data/processed/module_01/`
+- `data/processed/module_02/`
+- `data/processed/module_03/`
+
+Key outputs:
+
+- **Module 1**: `preprocessed_pilot_data.csv`, `preprocessed_pilot_data_report.json`
+- **Module 2**: `granger_results.json`, `granger_pairwise.csv`, `granger_matrices.npz`, `granger_results.xlsx`, `granger_results.md`
+- **Module 3**: `network_edges.csv`, `network_summary.csv`, `network_inference_results.json`, `market_leaders_*.csv`
+
+## Multiple dataset support
+
+`run_full_preprocessing_pipeline(..., input_file=...)` accepts:
+
+- `None`
+- `Path`
+- `str`
+- `list[Path]`
+- `list[str]`
+
+Behavior:
+
+- `input_file=None` automatically loads all `*.xlsx` files in `data/raw/`
+- all input files must have identical schemas
+- duplicate `(date, market_id, grade)` rows are handled by `duplicate_strategy`
+
+Supported duplicate strategies:
+
+- `error` — raise an informative error
+- `keep_first` — keep the first occurrence in input order
+- `keep_last` — keep the last occurrence in input order
+
+## Execution order
+
+Run the modules in this order:
+
+1. Module 1 preprocessing
+2. Module 2 integrated pairwise Granger testing
+3. Module 3 integrated graph recovery
+
+## Requirements
+
+Install dependencies with:
+
+```bash
+pip install -r requirements.txt
+```
+
+The requirements file includes all dependencies used by Modules 1–3, exports, visualizations, and tests.
 
 ## Reference
 
-R. J. Kinnear and R. R. Mazumdar (2023). "Exact recovery of Granger causality graphs with unconditional pairwise tests." *Network Science* 11(3), 431–457. https://doi.org/10.1017/nws.2023.11
+R. J. Kinnear and R. R. Mazumdar (2023). *Exact recovery of Granger causality graphs with unconditional pairwise tests.* Network Science 11(3), 431–457. https://doi.org/10.1017/nws.2023.11
