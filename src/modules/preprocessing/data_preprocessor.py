@@ -800,13 +800,19 @@ def run_full_preprocessing_pipeline(input_file: str,
     """
     
     # Default config
+    # NOTE (Fix #1 – Kinnear & Mazumdar alignment): Linear detrending followed by
+    # order-1 differencing is redundant — differencing already removes a linear trend.
+    # Applying both is "over-differencing" and can distort the autocorrelation structure
+    # that Granger tests rely on.  The default is therefore 'none' for detrend_method
+    # when differencing_order >= 1.  If you need detrending without differencing, set
+    # detrend_method to 'linear' or 'polynomial' AND differencing_order to 0.
     if config is None:
         config = {
             'missing_method': 'interpolate',
             'outlier_method': 'iqr',
             'outlier_threshold': 1.5,
             'log_transform': True,
-            'detrend_method': 'linear',
+            'detrend_method': 'none',
             'differencing_order': 1,
             'standardize_method': 'zscore',
             'stationarity_test': 'adf'
@@ -824,6 +830,21 @@ def run_full_preprocessing_pipeline(input_file: str,
         method=config['outlier_method'],
         threshold=config['outlier_threshold']
     )
+    
+    # Warn about redundant double-detrending (Fix #1)
+    detrend_method = config.get('detrend_method', 'none')
+    differencing_order = config.get('differencing_order', 1)
+    if detrend_method not in ('none', None) and differencing_order >= 1:
+        import warnings as _warnings
+        _warnings.warn(
+            "Both detrend_method='{}' and differencing_order={} are active.  "
+            "Differencing order-1 already removes a linear trend, so applying "
+            "linear detrending beforehand is redundant and may cause "
+            "over-differencing that weakens Granger test power.  "
+            "Consider setting detrend_method='none'.".format(
+                detrend_method, differencing_order),
+            UserWarning, stacklevel=2,
+        )
     
     # Transform
     df = preprocessor.apply_log_transformation(df, apply=config.get('log_transform', True))
