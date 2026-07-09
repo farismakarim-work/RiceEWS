@@ -33,6 +33,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 import logging
 import json
+import warnings
 from scipy import stats
 
 logger = logging.getLogger(__name__)
@@ -563,7 +564,15 @@ class GrangerCausalityTester:
             returns the same matrix W (pairwise ancestor set), not the
             final direct-edge graph E.  The name "causal_matrix" is
             misleading because W contains transitive edges.
+
+            This alias will be removed in a future release.
         """
+        warnings.warn(
+            "build_causal_matrix() is deprecated and will be removed in a future release. "
+            "Use build_pairwise_ancestor_matrix() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return self.build_pairwise_ancestor_matrix(grade_results, markets)
 
     def build_strength_matrix(self,

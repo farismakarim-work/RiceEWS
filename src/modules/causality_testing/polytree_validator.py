@@ -29,6 +29,7 @@ import networkx as nx
 from typing import Tuple, Dict, List, Set
 from dataclasses import dataclass
 import logging
+import warnings
 
 logger = logging.getLogger(__name__)
 
@@ -417,7 +418,16 @@ class PolytreeOptimizer:
         
         G = causal_graph.copy()
         removed_edges = []
-        
+
+        warnings.warn(
+            "reduce_multiple_parents() is conceptually incorrect for SCG (strongly causal "
+            "graph) networks: multi-parent nodes are valid in an SCG (Definition 2.9 of "
+            "Kinnear & Mazumdar 2023). Calling this method destroys valid graph structure "
+            "and should not be used in the RiceEWS pipeline.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
         for node in G.nodes():
             in_edges = list(G.in_edges(node, data=True))
             

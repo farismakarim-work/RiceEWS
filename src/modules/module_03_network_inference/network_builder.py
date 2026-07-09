@@ -30,7 +30,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Dict, FrozenSet, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import networkx as nx
 import numpy as np
@@ -121,7 +121,7 @@ def _parse_relation(relation: str) -> Optional[Tuple[str, str]]:
 
 def _build_ancestor_set_W(
     pairwise_tests: Dict,
-) -> Tuple[Set[Tuple[str, str]], Set[FrozenSet[str]], Dict[Tuple[str, str], float]]:
+) -> Tuple[set, set, Dict[Tuple[str, str], float]]:
     """
     Build the ancestor set W and collect F-statistics from pairwise test results.
 
@@ -162,15 +162,15 @@ def _build_ancestor_set_W(
         all_causes[(source, target)] = f_stat
 
     # Identify bidirectional pairs (both i→j and j→i significant) → exclude both
-    to_exclude: Set[Tuple[str, str]] = set()
-    excluded_bidirectional: Set[FrozenSet[str]] = set()
+    to_exclude: set = set()
+    excluded_bidirectional: set = set()
     for (src, tgt) in list(all_causes.keys()):
         if (tgt, src) in all_causes:
             to_exclude.add((src, tgt))
             to_exclude.add((tgt, src))
             excluded_bidirectional.add(frozenset({src, tgt}))
 
-    W: Set[Tuple[str, str]] = {pair for pair in all_causes if pair not in to_exclude}
+    W: set = {pair for pair in all_causes if pair not in to_exclude}
     f_stats: Dict[Tuple[str, str], float] = {k: v for k, v in all_causes.items() if k in W}
 
     return W, excluded_bidirectional, f_stats
@@ -221,8 +221,10 @@ def _compute_level_partition(
                 queue.append(successor)
 
     if len(topo_order) != len(nodes):
-        # W contains a cycle (shouldn't happen after bidirectional removal, but
-        # be defensive).  Fall back: assign level 0 to all.
+        # W can still contain a cycle even after bidirectional-pair removal: only
+        # 2-cycles (A⇄B) are excluded by Corollary 2.3; longer cycles (A→B→C→A)
+        # are theoretically incompatible with an SCG but may still appear in
+        # noisy test results.  Fall back: assign level 0 to all nodes.
         logger.warning(
             "W contains a cycle after bidirectional-pair removal.  "
             "Level partition falls back to level 0 for all nodes."
@@ -827,6 +829,22 @@ def run_module3_network_inference(
                 f"  [Algorithm 1] Grade={grade}: {len(excluded_bidir)} "
                 f"bidirectional pair(s) excluded as confounders."
             )
+            if not W:
+                import warnings as _warnings
+                _warnings.warn(
+                    f"Grade={grade}: All significant pairwise relationships were "
+                    f"bidirectional and have been excluded (Corollary 2.3). "
+                    f"The resulting causal network is empty. This may indicate "
+                    f"strong bidirectional coupling inconsistent with SCG assumptions, "
+                    f"or an overly aggressive FDR correction threshold. "
+                    f"Consider reviewing the data or adjusting the significance level.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+                logger.warning(
+                    "Grade=%s: All edges excluded — W is empty after bidirectional removal.",
+                    grade,
+                )
         else:
             excluded_bidirectional_per_grade[grade] = []
 
