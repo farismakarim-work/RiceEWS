@@ -38,6 +38,50 @@ from scipy import stats
 logger = logging.getLogger(__name__)
 
 
+def _benjamini_hochberg(p_values: np.ndarray, alpha: float = 0.05) -> np.ndarray:
+    """
+    Apply Benjamini-Hochberg (BH) procedure to control the False Discovery Rate.
+
+    Reference: Benjamini & Hochberg (1995), as cited in Kinnear & Mazumdar (2023)
+    Section 3: the pairwise testing heuristic "essentially controls the false
+    discovery rate substantially below what it would be with a threshold-based
+    pairwise scheme."
+
+    Parameters
+    ----------
+    p_values : np.ndarray
+        Raw p-values from individual tests.
+    alpha : float
+        Target FDR level (default 0.05).
+
+    Returns
+    -------
+    np.ndarray
+        BH-adjusted p-values (same order as input).  Compare against ``alpha``
+        to determine significance: ``adjusted_p < alpha`` ⟺ reject H0.
+    """
+    n = len(p_values)
+    if n == 0:
+        return np.array([])
+
+    order = np.argsort(p_values)
+    sorted_p = p_values[order]
+
+    # BH critical values: p_i * n / rank
+    adjusted = sorted_p * n / np.arange(1, n + 1)
+
+    # Enforce monotonicity (cumulative minimum from the right)
+    adjusted = np.minimum.accumulate(adjusted[::-1])[::-1]
+
+    # Clip to [0, 1]
+    adjusted = np.clip(adjusted, 0.0, 1.0)
+
+    # Restore original order
+    result = np.empty(n)
+    result[order] = adjusted
+    return result
+
+
 class GrangerCausalityTester:
     """
     Granger causality testing untuk rice market price relationships.
@@ -347,7 +391,8 @@ class GrangerCausalityTester:
                                         auto_lag: bool = False,
                                         max_lag: int = 8,
                                         lag_criterion: str = 'bic',
-                                        significance_level: float = 0.05) -> Dict:
+                                        significance_level: float = 0.05,
+                                        apply_fdr: bool = True) -> Dict:
         """
         Test ALL pairwise Granger relationships untuk satu grade.
 
@@ -370,7 +415,14 @@ class GrangerCausalityTester:
         lag_criterion : str
             'bic' atau 'aic', digunakan saat ``auto_lag=True``.
         significance_level : float
-            Threshold p-value (default 0.05).
+            Threshold p-value nominal (default 0.05).
+        apply_fdr : bool
+            Jika True (default), terapkan koreksi Benjamini-Hochberg (BH)
+            untuk mengendalikan False Discovery Rate (FDR) atas seluruh
+            N*(N-1) pengujian pairwise sekaligus, sesuai Section 3 paper
+            Kinnear & Mazumdar (2023) yang menekankan pentingnya
+            pengendalian FDR.  Keputusan ``granger_causes`` didasarkan
+            pada p-value terkoreksi (``p_value_bh``).
 
         Returns
         -------
@@ -387,10 +439,13 @@ class GrangerCausalityTester:
             print(f"Markets: {markets}")
             print(f"Pairwise tests: {len(markets) * (len(markets) - 1)}")
             lag_info = f"auto ({lag_criterion.upper()}, max={max_lag})" if auto_lag else str(lag_order)
-            print(f"Lag order: {lag_info}\n")
+            print(f"Lag order: {lag_info}")
+            if apply_fdr:
+                print("FDR correction: Benjamini-Hochberg (BH)\n")
+            else:
+                print("FDR correction: NONE (per-test alpha, may inflate false discoveries)\n")
 
         results = {}
-        causal_count = 0
 
         for y_market in markets:
             # Jika auto_lag, tentukan lag optimal untuk y_market ini
@@ -423,24 +478,66 @@ class GrangerCausalityTester:
                 )
                 results[f"M{x_market}→M{y_market}"] = test_result
 
-                if test_result['granger_causes']:
-                    causal_count += 1
-                    if self.verbose:
-                        print(
-                            f"  ✓ M{x_market}→M{y_market}: F={test_result['f_statistic']:.4f}, "
-                            f"p={test_result['p_value']:.4f}, lag={effective_lag}"
-                        )
+        # --- Benjamini-Hochberg FDR correction (Fix #3) ---
+        # Section 3, Kinnear & Mazumdar (2023): the heuristic "essentially controls
+        # the false discovery rate substantially below what it would be with a
+        # threshold-based pairwise scheme."  Applying BH across all N*(N-1) tests
+        # follows Benjamini & Hochberg (1995), as referenced in the paper.
+        if apply_fdr:
+            keys_with_pval = [
+                k for k, v in results.items()
+                if v.get('p_value') is not None
+            ]
+            if keys_with_pval:
+                p_values = np.array([results[k]['p_value'] for k in keys_with_pval])
+                p_values_bh = _benjamini_hochberg(p_values, alpha=significance_level)
 
+                for k, p_bh in zip(keys_with_pval, p_values_bh):
+                    results[k]['p_value_bh'] = float(p_bh)
+                    results[k]['granger_causes'] = bool(p_bh < significance_level)
+
+        causal_count = sum(1 for v in results.values() if v.get('granger_causes', False))
         if self.verbose:
+            for k, v in results.items():
+                if v.get('granger_causes'):
+                    p_display = v.get('p_value_bh', v.get('p_value'))
+                    print(
+                        f"  ✓ {k}: F={v.get('f_statistic', float('nan')):.4f}, "
+                        f"p_raw={v.get('p_value', float('nan')):.4f}"
+                        + (f", p_BH={p_display:.4f}" if apply_fdr and 'p_value_bh' in v else "")
+                        + f", lag={v.get('lag_order', '?')}"
+                    )
             print(f"\nSignificant causal relationships: {causal_count}/{len(results)}")
 
         return results
 
-    def build_causal_matrix(self,
-                            grade_results: Dict,
-                            markets: List[int]) -> np.ndarray:
-        """Build causal adjacency matrix dari test results."""
+    def build_pairwise_ancestor_matrix(self,
+                                       grade_results: Dict,
+                                       markets: List[int]) -> np.ndarray:
+        """
+        Build pairwise ancestor adjacency matrix W dari test results.
 
+        This matrix represents the set W of Kinnear & Mazumdar (2023): each
+        entry W[i,j]=1 means market j is a pairwise Granger ancestor of market i
+        (i.e., j pairwise Granger-causes i).
+
+        NOTE: W may contain transitive (false positive) edges.  The final
+        direct-edge graph E is obtained only after running Algorithm 1
+        (transitive reduction) in Module 3.  Do NOT use this matrix as the
+        definitive causal graph.
+
+        Parameters
+        ----------
+        grade_results : dict
+            Pairwise test results from ``test_all_pairwise_relationships``.
+        markets : list of int
+            Ordered list of market IDs.
+
+        Returns
+        -------
+        np.ndarray
+            N×N binary ancestor matrix W.
+        """
         n = len(markets)
         matrix = np.zeros((n, n))
         market_idx = {m: i for i, m in enumerate(markets)}
@@ -456,6 +553,18 @@ class GrangerCausalityTester:
                 matrix[i, j] = 1
 
         return matrix
+
+    def build_causal_matrix(self,
+                            grade_results: Dict,
+                            markets: List[int]) -> np.ndarray:
+        """
+        .. deprecated::
+            Use ``build_pairwise_ancestor_matrix`` instead.  This method
+            returns the same matrix W (pairwise ancestor set), not the
+            final direct-edge graph E.  The name "causal_matrix" is
+            misleading because W contains transitive edges.
+        """
+        return self.build_pairwise_ancestor_matrix(grade_results, markets)
 
     def build_strength_matrix(self,
                               grade_results: Dict,
@@ -575,17 +684,17 @@ class GrangerCausalityTester:
         with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
             summary_data = []
             for grade, grade_data in all_results.items():
-                out_degrees = grade_data['out_degrees']
-                in_degrees = grade_data['in_degrees']
-                leaders = grade_data['market_leaders']
+                out_degrees = grade_data.get('preliminary_out_degrees', grade_data.get('out_degrees', {}))
+                in_degrees = grade_data.get('preliminary_in_degrees', grade_data.get('in_degrees', {}))
+                leaders = grade_data.get('preliminary_market_leaders', grade_data.get('market_leaders', []))
 
                 for market in sorted(out_degrees.keys()):
                     summary_data.append({
                         'Grade': grade,
                         'Market': market,
-                        'Out_Degree_Influence': out_degrees[market],
-                        'In_Degree_Susceptibility': in_degrees[market],
-                        'Leader_Rank': leaders.index(market) + 1 if market in leaders else None
+                        'W_Out_Degree': out_degrees[market],
+                        'W_In_Degree': in_degrees[market],
+                        'Preliminary_Leader_Rank': leaders.index(market) + 1 if market in leaders else None
                     })
 
             df_summary = pd.DataFrame(summary_data)
@@ -608,9 +717,12 @@ class GrangerCausalityTester:
                 df_pairwise.to_excel(writer, sheet_name=sheet_name, index=False)
 
             for grade, grade_data in all_results.items():
-                causal_matrix = np.array(grade_data['causal_matrix'])
-                df_matrix = pd.DataFrame(causal_matrix)
-                sheet_name = f"Matrix_{grade}"[:31]
+                # Fix #4: use pairwise_ancestor_matrix, fall back to causal_matrix for compat
+                ancestor_matrix = np.array(
+                    grade_data.get('pairwise_ancestor_matrix', grade_data.get('causal_matrix', []))
+                )
+                df_matrix = pd.DataFrame(ancestor_matrix)
+                sheet_name = f"AncestorMatrix_{grade}"[:31]
                 df_matrix.to_excel(writer, sheet_name=sheet_name, index=True)
 
         if self.verbose:
@@ -627,7 +739,9 @@ class GrangerCausalityTester:
 
         matrices_dict = {}
         for grade, grade_data in all_results.items():
-            matrices_dict[f"{grade}_matrix"] = np.array(grade_data['causal_matrix'])
+            # Fix #4: use pairwise_ancestor_matrix, fall back to causal_matrix for compat
+            mat = grade_data.get('pairwise_ancestor_matrix', grade_data.get('causal_matrix', []))
+            matrices_dict[f"{grade}_pairwise_ancestor_matrix"] = np.array(mat)
 
         np.savez(output_path, **matrices_dict)
 
@@ -645,21 +759,27 @@ class GrangerCausalityTester:
 
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write("# Granger Causality Testing Results\n\n")
+            f.write(
+                "> **Note**: Market rankings below are based on the **pairwise ancestor set W** "
+                "(all significant pairwise Granger relations).  W may contain transitive false "
+                "positives.  Authoritative market leaders based on the direct-edge graph E "
+                "are produced by Module 3 (Algorithm 1, transitive reduction).\n\n"
+            )
             f.write("## Summary\n\n")
 
             for grade, grade_data in all_results.items():
                 f.write(f"### Grade: {grade}\n\n")
 
-                leaders = grade_data['market_leaders']
-                out_degrees = grade_data['out_degrees']
-                in_degrees = grade_data['in_degrees']
+                leaders = grade_data.get('preliminary_market_leaders', grade_data.get('market_leaders', []))
+                out_degrees = grade_data.get('preliminary_out_degrees', grade_data.get('out_degrees', {}))
+                in_degrees = grade_data.get('preliminary_in_degrees', grade_data.get('in_degrees', {}))
 
-                f.write("#### Market Leaders (by Influence)\n\n")
-                f.write("| Rank | Market | Out-Degree | In-Degree |\n")
+                f.write("#### Preliminary Market Rankings (based on W, see Note above)\n\n")
+                f.write("| Rank | Market | W-Out-Degree | W-In-Degree |\n")
                 f.write("|------|--------|------------|----------|\n")
 
                 for i, market in enumerate(leaders, 1):
-                    f.write(f"| {i} | M{market} | {out_degrees[market]} | {in_degrees[market]} |\n")
+                    f.write(f"| {i} | M{market} | {out_degrees.get(market, 0)} | {in_degrees.get(market, 0)} |\n")
 
                 f.write("\n#### Significant Causal Relationships\n\n")
                 significant = [
@@ -669,13 +789,17 @@ class GrangerCausalityTester:
                 significant = sorted(significant, key=lambda x: x[1].get('f_statistic', 0), reverse=True)
 
                 if significant:
-                    f.write("| Relationship | F-Statistic | P-Value | Lag |\n")
-                    f.write("|---|---|---|---|\n")
+                    f.write("| Relationship | F-Statistic | P-Value (raw) | P-Value (BH) | Lag |\n")
+                    f.write("|---|---|---|---|---|\n")
                     for relationship, test_result in significant:
                         f_stat = test_result.get('f_statistic', '-')
                         p_val = test_result.get('p_value', '-')
+                        p_bh = test_result.get('p_value_bh', '-')
                         lag = test_result.get('lag_order', '-')
-                        f.write(f"| {relationship} | {f_stat:.4f} | {p_val:.4f} | {lag} |\n")
+                        p_val_str = f"{p_val:.4f}" if isinstance(p_val, float) else str(p_val)
+                        p_bh_str = f"{p_bh:.4f}" if isinstance(p_bh, float) else str(p_bh)
+                        f_str = f"{f_stat:.4f}" if isinstance(f_stat, float) else str(f_stat)
+                        f.write(f"| {relationship} | {f_str} | {p_val_str} | {p_bh_str} | {lag} |\n")
                 else:
                     f.write("No significant relationships found.\n")
 
@@ -705,8 +829,11 @@ class GrangerCausalityTester:
         saved_files = []
 
         for grade, grade_data in all_results.items():
-            causal_matrix = np.array(grade_data['causal_matrix'])
-            out_degrees = grade_data['out_degrees']
+            # Fix #4: use pairwise_ancestor_matrix, fall back to causal_matrix for compat
+            causal_matrix = np.array(
+                grade_data.get('pairwise_ancestor_matrix', grade_data.get('causal_matrix', []))
+            )
+            out_degrees = grade_data.get('preliminary_out_degrees', grade_data.get('out_degrees', {}))
 
             n_markets = len(markets)
             pos_x = [np.cos(2 * np.pi * i / n_markets) for i in range(n_markets)]
@@ -786,7 +913,10 @@ class GrangerCausalityTester:
         saved_files = []
 
         for grade, grade_data in all_results.items():
-            causal_matrix = np.array(grade_data['causal_matrix'])
+            # Fix #4: use pairwise_ancestor_matrix, fall back to causal_matrix for compat
+            causal_matrix = np.array(
+                grade_data.get('pairwise_ancestor_matrix', grade_data.get('causal_matrix', []))
+            )
 
             fig = go.Figure(
                 data=go.Heatmap(
@@ -934,6 +1064,7 @@ def run_full_granger_analysis(input_file: str,
         Direktori output untuk semua format hasil.
     config : dict, optional
         Konfigurasi. Kunci yang didukung:
+
         - ``lag_order`` (int, default 4): jumlah lag yang digunakan.
         - ``price_col`` (str, default 'price_diff'): kolom harga.
         - ``significance_level`` (float, default 0.05): threshold p-value.
@@ -941,11 +1072,26 @@ def run_full_granger_analysis(input_file: str,
           otomatis berbasis BIC. Jika True, ``lag_order`` diabaikan.
         - ``max_lag`` (int, default 8): lag maksimum saat ``auto_lag=True``.
         - ``lag_criterion`` (str, default 'bic'): 'bic' atau 'aic'.
+        - ``apply_fdr`` (bool, default True): terapkan Benjamini-Hochberg
+          FDR correction lintas semua N*(N-1) pengujian pairwise per grade,
+          sesuai Section 3 Kinnear & Mazumdar (2023).
 
     Returns
     -------
     dict
-        Hasil lengkap per grade.
+        Hasil lengkap per grade.  Setiap grade entry berisi:
+
+        - ``pairwise_tests``: hasil uji pairwise, masing-masing meliputi
+          ``granger_causes`` (bool, berdasarkan p-value terkoreksi BH jika
+          ``apply_fdr=True``), ``f_statistic``, ``p_value`` (raw),
+          dan ``p_value_bh`` (BH-adjusted, jika apply_fdr=True).
+        - ``pairwise_ancestor_matrix``: matriks W (N×N) — pairwise ancestor
+          set.  **Bukan** graf kausal langsung; berisi false positive transitif.
+          Graf kausal langsung E diperoleh di MODUL 3 via Algorithm 1.
+        - ``causal_matrix``: alias deprecated dari ``pairwise_ancestor_matrix``.
+        - ``preliminary_out_degrees``, ``preliminary_in_degrees``,
+          ``preliminary_market_leaders``: metrik berbasis W (preliminary only;
+          lihat MODUL 3 untuk market leaders final berbasis E).
     """
     if config is None:
         config = {
@@ -955,6 +1101,7 @@ def run_full_granger_analysis(input_file: str,
             'auto_lag': False,
             'max_lag': 8,
             'lag_criterion': 'bic',
+            'apply_fdr': True,
         }
 
     # Berikan nilai default untuk kunci opsional agar tidak KeyError
@@ -964,6 +1111,7 @@ def run_full_granger_analysis(input_file: str,
     auto_lag = bool(config.get('auto_lag', False))
     max_lag = int(config.get('max_lag', 8))
     lag_criterion = str(config.get('lag_criterion', 'bic'))
+    apply_fdr = bool(config.get('apply_fdr', True))
 
     tester = GrangerCausalityTester(verbose=True)
     df = tester.load_preprocessed_data(input_file)
@@ -985,16 +1133,26 @@ def run_full_granger_analysis(input_file: str,
             max_lag=max_lag,
             lag_criterion=lag_criterion,
             significance_level=significance_level,
+            apply_fdr=apply_fdr,
         )
 
-        causal_matrix = tester.build_causal_matrix(grade_results, markets)
-        out_degrees = tester.get_market_out_degree(causal_matrix, markets)
-        in_degrees = tester.get_market_in_degree(causal_matrix, markets)
-        market_leaders = tester.identify_market_leaders(causal_matrix, markets)
+        # Build pairwise ancestor matrix W (Fix #4: renamed from causal_matrix)
+        pairwise_ancestor_matrix = tester.build_pairwise_ancestor_matrix(grade_results, markets)
+        out_degrees = tester.get_market_out_degree(pairwise_ancestor_matrix, markets)
+        in_degrees = tester.get_market_in_degree(pairwise_ancestor_matrix, markets)
+        market_leaders = tester.identify_market_leaders(pairwise_ancestor_matrix, markets)
 
         all_results[grade] = {
             'pairwise_tests': grade_results,
-            'causal_matrix': causal_matrix.tolist(),
+            # Fix #4: renamed key; causal_matrix kept as deprecated alias for backward compat
+            'pairwise_ancestor_matrix': pairwise_ancestor_matrix.tolist(),
+            'causal_matrix': pairwise_ancestor_matrix.tolist(),  # deprecated alias
+            # Preliminary metrics based on W (ancestor set), NOT the final graph E.
+            # Use Module 3 output for authoritative market leaders based on E.
+            'preliminary_out_degrees': out_degrees,
+            'preliminary_in_degrees': in_degrees,
+            'preliminary_market_leaders': market_leaders,
+            # Kept for backward compat with downstream consumers
             'out_degrees': out_degrees,
             'in_degrees': in_degrees,
             'market_leaders': market_leaders,
@@ -1002,9 +1160,10 @@ def run_full_granger_analysis(input_file: str,
         }
 
         if tester.verbose:
-            print(f"\nMarket Leaders (by influence):")
+            print(f"\nPreliminary market rankings (from pairwise ancestor set W; "
+                  f"final rankings require Module 3 transitive reduction):")
             for i, market in enumerate(market_leaders, 1):
-                print(f"  {i}. Market {market} (out-degree: {out_degrees[market]})")
+                print(f"  {i}. Market {market} (W-out-degree: {out_degrees[market]})")
 
     print(f"\n{'='*70}")
     print("SAVING RESULTS IN MULTIPLE FORMATS + VISUALIZATIONS")

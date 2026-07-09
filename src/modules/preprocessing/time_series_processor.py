@@ -2,6 +2,13 @@
 Time Series Preprocessing Module
 ==================================
 
+.. deprecated::
+    This module (``TimeSeriesProcessor``) is a duplicate of the active preprocessing
+    pipeline in ``data_preprocessor.py`` (``DataPreprocessor``).  It is **not called**
+    anywhere in the RiceEWS pipeline and exists only for reference.
+
+    Use ``src/modules/preprocessing/data_preprocessor.py`` instead.
+
 Preprocessing untuk time series data harga beras sebelum Granger causality testing.
 Includes: normalization, detrending, stationarity checking, missing data handling.
 
@@ -12,6 +19,14 @@ Key Steps:
 4. Differencing for stationarity
 5. Normalization/Standardization
 """
+
+import warnings as _warnings
+_warnings.warn(
+    "time_series_processor.py is deprecated and not used by the RiceEWS pipeline.  "
+    "Use data_preprocessor.py (DataPreprocessor) instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 import pandas as pd
 import numpy as np

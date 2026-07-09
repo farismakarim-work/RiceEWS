@@ -2,17 +2,25 @@
 Polytree/Strong Causality Validator Module
 ==========================================
 
-Menguji apakah jaringan pasar beras memenuhi strong causality (polytree) assumption
-dari paper Kinnear & Mazumdar (2023).
+Menguji apakah jaringan pasar beras memenuhi **strong causality (SCG / polytree)**
+assumption dari paper Kinnear & Mazumdar (2023).
 
 Reference:
 - Exact Recovery of Granger Causality Graphs with Unconditional Pairwise Tests
 - Network Science, Vol 11, Issue 3, pp. 431-457, 2023
 
-Polytree adalah DAG (Directed Acyclic Graph) di mana:
-1. Setiap node memiliki paling banyak satu parent
-2. Tidak ada cycles
-3. Structure ini memungkinkan unconditional pairwise tests untuk exact recovery
+**Definisi yang benar (Fix #5 — sesuai paper):**
+
+Sebuah DAG G disebut *strongly causal* (Definition 2.9) jika **kerangka
+tak-berarahnya (underlying undirected skeleton) adalah sebuah forest**,
+yaitu tidak ada siklus pada graf jika arah edge diabaikan.
+
+Ini BUKAN ekuivalen dengan "setiap node memiliki paling banyak satu parent."
+Struktur diamond/v-structure (misal i→j←k) adalah contoh valid SCG karena
+skeleton tak-berarahnya (i–j–k) tidak memiliki siklus, meskipun j punya
+dua parent.  Lihat Kinnear & Mazumdar (2023) Section 2.5 dan Gambar 1(a).
+
+Cek yang benar: ``nx.is_directed_acyclic_graph(G) AND nx.is_forest(G.to_undirected())``
 """
 
 import numpy as np
@@ -27,25 +35,29 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class PolytreeTestResult:
-    """Hasil pengujian polytree assumption"""
-    is_polytree: bool
+    """Hasil pengujian strong causality (polytree/SCG) assumption."""
+    is_polytree: bool          # True iff DAG AND undirected skeleton is a forest
     is_dag: bool
-    max_parents: int
-    nodes_with_multiple_parents: List[str]
+    skeleton_is_forest: bool   # Undirected skeleton has no cycles (correct SCG criterion)
+    max_parents: int           # Informational only; NOT the SCG criterion
+    nodes_with_multiple_parents: List[str]  # Informational; allowed in SCG
     cycles_found: List[List[str]]
     cycle_count: int
-    strong_causality_score: float  # 0-1, 1 = perfect polytree
+    strong_causality_score: float  # 0-1, 1 = DAG + forest skeleton
     recommendations: List[str]
 
 
 class PolytreeValidator:
     """
-    Validator untuk mengecek apakah causal graph memenuhi polytree assumption.
-    
-    Polytree properties:
-    - DAG (no cycles)
-    - Each node has at most 1 parent
-    - Allows unconditional pairwise testing for exact recovery
+    Validator untuk mengecek apakah causal graph memenuhi **strong causality (SCG)**
+    assumption dari Kinnear & Mazumdar (2023).
+
+    Correct SCG / polytree properties (Definition 2.9):
+    - DAG (no directed cycles)
+    - Underlying **undirected skeleton is a forest** (no undirected cycles)
+
+    This is checked via ``nx.is_forest(G.to_undirected())``, NOT by testing
+    whether each node has at most one parent.
     """
 
     def __init__(self, verbose: bool = True):
@@ -55,29 +67,26 @@ class PolytreeValidator:
                          causal_graph: nx.DiGraph,
                          market_names: Dict[int, str] = None) -> PolytreeTestResult:
         """
-        Validate apakah causal graph memenuhi polytree assumption.
-        
+        Validate apakah causal graph memenuhi strong causality (SCG) assumption.
+
         Parameters:
         -----------
         causal_graph : nx.DiGraph
-            Directed graph of causal relationships
-            Nodes: market indices
-            Edges: causal relationships (from -> to)
+            Directed graph of causal relationships.
         market_names : Dict[int, str], optional
-            Mapping dari node index ke market name
-            
+            Mapping dari node index ke market name.
+
         Returns:
         --------
         PolytreeTestResult
-            Hasil validasi polytree
-            
+
         Example:
         --------
         >>> G = nx.DiGraph()
         >>> G.add_edges_from([(0, 1), (1, 2), (0, 2)])
         >>> validator = PolytreeValidator()
         >>> result = validator.validate_polytree(G)
-        >>> print(f"Is Polytree: {result.is_polytree}")
+        >>> print(f"Is SCG (Polytree): {result.is_polytree}")
         >>> print(f"Strong Causality Score: {result.strong_causality_score:.3f}")
         """
         
@@ -87,40 +96,47 @@ class PolytreeValidator:
         # 1. Check if DAG (Directed Acyclic Graph)
         is_dag = nx.is_directed_acyclic_graph(causal_graph)
         cycles = list(nx.simple_cycles(causal_graph)) if not is_dag else []
+
+        # 2. Check if undirected skeleton is a forest (correct SCG criterion, Fix #5)
+        #    A forest = no undirected cycles = at most one undirected path between any pair.
+        #    This is the correct definition per Kinnear & Mazumdar (2023) Definition 2.9.
+        skeleton_is_forest = nx.is_forest(causal_graph.to_undirected()) if is_dag else False
         
-        # 2. Check max in-degree (parents per node)
+        # 3. SCG (polytree): DAG + undirected skeleton is a forest
+        is_polytree = is_dag and skeleton_is_forest
+
+        # 4. Informational: in-degree stats (NOT the SCG criterion)
         in_degrees = dict(causal_graph.in_degree())
         max_parents = max(in_degrees.values()) if in_degrees else 0
         nodes_with_multiple_parents = [node for node, degree in in_degrees.items() 
                                        if degree > 1]
         
-        # 3. Determine if it's a polytree
-        is_polytree = is_dag and max_parents <= 1
-        
-        # 4. Calculate strong causality score
+        # 5. Calculate strong causality score
         strong_causality_score = self._calculate_strong_causality_score(
-            is_dag, max_parents, len(causal_graph.nodes())
+            is_dag, skeleton_is_forest
         )
         
-        # 5. Generate recommendations
+        # 6. Generate recommendations
         recommendations = self._generate_recommendations(
-            is_polytree, is_dag, max_parents, cycles, 
+            is_polytree, is_dag, skeleton_is_forest, max_parents, cycles, 
             len(nodes_with_multiple_parents), len(causal_graph.nodes())
         )
         
         # Format output dengan market names jika tersedia
         formatted_cycles = cycles
+        formatted_multi_parents = nodes_with_multiple_parents
         if market_names:
             formatted_cycles = [[market_names.get(n, str(n)) for n in cycle] 
                                for cycle in cycles]
-            nodes_with_multiple_parents = [market_names.get(n, str(n)) 
-                                          for n in nodes_with_multiple_parents]
+            formatted_multi_parents = [market_names.get(n, str(n)) 
+                                      for n in nodes_with_multiple_parents]
         
         result = PolytreeTestResult(
             is_polytree=is_polytree,
             is_dag=is_dag,
+            skeleton_is_forest=skeleton_is_forest,
             max_parents=max_parents,
-            nodes_with_multiple_parents=nodes_with_multiple_parents,
+            nodes_with_multiple_parents=formatted_multi_parents,
             cycles_found=formatted_cycles,
             cycle_count=len(cycles),
             strong_causality_score=strong_causality_score,
@@ -180,118 +196,103 @@ class PolytreeValidator:
 
     def _calculate_strong_causality_score(self, 
                                          is_dag: bool,
-                                         max_parents: int,
-                                         num_nodes: int) -> float:
+                                         skeleton_is_forest: bool) -> float:
         """
         Calculate strong causality score (0-1).
-        
-        Score components:
+
+        Score components (Fix #5):
         - DAG: 50%
-        - Polytree (max_parents=1): 50%
+        - Undirected skeleton is a forest (correct SCG criterion): 50%
         """
-        
-        if num_nodes == 0:
-            return 1.0
-        
         score = 0.0
-        
-        # DAG contribution (50%)
         if is_dag:
             score += 0.5
-        
-        # Polytree contribution (50%)
-        # Perfect: max_parents = 1
-        # Degraded: max_parents > 1
-        if max_parents <= 1:
+        if skeleton_is_forest:
             score += 0.5
-        else:
-            # Penalty for multiple parents
-            # max_parents=2 -> 0.25 (50% * 0.5)
-            # max_parents=3 -> 0.167 (50% * 0.33)
-            penalty_factor = 1.0 / max_parents
-            score += 0.5 * penalty_factor
-        
         return min(1.0, score)
 
     def _generate_recommendations(self,
                                  is_polytree: bool,
                                  is_dag: bool,
+                                 skeleton_is_forest: bool,
                                  max_parents: int,
                                  cycles: List,
                                  num_multiple_parent_nodes: int,
                                  num_nodes: int) -> List[str]:
-        """Generate actionable recommendations"""
+        """Generate actionable recommendations (Fix #5: correct SCG criterion)."""
         
         recommendations = []
         
         if is_polytree:
             recommendations.append(
-                "✓ Graph memenuhi polytree assumption. "
-                "Dapat menggunakan unconditional pairwise Granger tests untuk exact recovery."
+                "✓ Graph memenuhi SCG (strongly causal) assumption — DAG dengan "
+                "skeleton tak-berarah berupa forest.  "
+                "Unconditional pairwise Granger tests memberikan exact recovery "
+                "(Theorem 2.2, Kinnear & Mazumdar 2023)."
             )
+            if num_multiple_parent_nodes > 0:
+                recommendations.append(
+                    f"  ℹ {num_multiple_parent_nodes} node(s) memiliki multiple parents — "
+                    "ini VALID dalam SCG selama skeleton tak-berarah tetap forest "
+                    "(lihat Definition 2.9 dan Gambar 1(a) paper)."
+                )
             return recommendations
         
         if not is_dag:
             recommendations.append(
-                f"⚠ CRITICAL: Graph mengandung {len(cycles)} cycle(s). "
-                "Polytree assumption violated. Perlu menghilangkan cycles:"
+                f"⚠ CRITICAL: Graph mengandung {len(cycles)} directed cycle(s). "
+                "SCG assumption violated. Perlu menghilangkan directed cycles:"
             )
             for i, cycle in enumerate(cycles, 1):
                 recommendations.append(f"  Cycle {i}: {' → '.join(map(str, cycle))} → {cycle[0]}")
             recommendations.append(
-                "  Saran: Review data atau gunakan conditional Granger causality tests."
+                "  Saran: Terapkan Algorithm 1 (Modul 3) untuk menghilangkan "
+                "transitive edges, atau review data."
             )
         
-        if max_parents > 1:
-            percentage = (num_multiple_parent_nodes / num_nodes * 100) if num_nodes > 0 else 0
+        if is_dag and not skeleton_is_forest:
             recommendations.append(
-                f"⚠ WARNING: {num_multiple_parent_nodes}/{num_nodes} nodes ({percentage:.1f}%) "
-                f"memiliki multiple parents (max={max_parents}). "
-                f"Polytree assumption partially violated."
+                "⚠ WARNING: Graf adalah DAG tapi skeleton tak-berarahnya mengandung "
+                "siklus undirected (bukan forest).  SCG assumption violated.  "
+                "Ini terjadi ketika ada beberapa jalur tak-berarah antara dua node."
             )
             recommendations.append(
-                "  Saran: Pertimbangkan pengaruh indirect causality. "
-                "Gunakan conditional tests jika perlu lebih strict."
+                "  Saran: Periksa apakah ada hubungan kausal yang saling membentuk "
+                "undirected cycle.  Exact-recovery tidak dijamin oleh Theorem 2.2, "
+                "tetapi hasil pairwise recovery masih berguna sebagai aproksimasi."
             )
-        
-        if not is_dag and max_parents > 1:
-            recommendations.append(
-                "\n📊 OVERALL ASSESSMENT: Graph violates polytree assumption severely. "
-                "Rekomendasi:"
-            )
-            recommendations.append(
-                "  1. Review data quality dan Granger test parameters")
-            recommendations.append(
-                "  2. Gunakan conditional Granger causality (Kinnear & Mazumdar 2023)")
-            recommendations.append(
-                "  3. Pertimbangkan preprocessing atau filtering pada causal relationships")
         
         return recommendations
 
     def _print_results(self, result: PolytreeTestResult) -> None:
-        """Pretty print hasil validasi"""
+        """Pretty print hasil validasi (Fix #5: updated for correct SCG criterion)."""
         
         print("\n" + "="*70)
-        print("POLYTREE/STRONG CAUSALITY VALIDATION RESULT")
+        print("STRONG CAUSALITY (SCG / POLYTREE) VALIDATION RESULT")
         print("="*70)
         
         status_icon = "✓" if result.is_polytree else "✗"
-        print(f"\n{status_icon} Is Polytree: {result.is_polytree}")
-        print(f"✓ Is DAG: {result.is_dag}" if result.is_dag else f"✗ Is DAG: {result.is_dag}")
-        print(f"\n📊 Max Parents per Node: {result.max_parents}")
-        print(f"🔄 Cycles Found: {result.cycle_count}")
+        dag_icon = "✓" if result.is_dag else "✗"
+        forest_icon = "✓" if result.skeleton_is_forest else "✗"
+        print(f"\n{status_icon} Is SCG (Strongly Causal / Polytree): {result.is_polytree}")
+        print(f"  {dag_icon} Is DAG: {result.is_dag}")
+        print(f"  {forest_icon} Undirected skeleton is forest: {result.skeleton_is_forest}")
+        print(f"  ℹ  Max parents per node: {result.max_parents}  "
+              f"(informational; multi-parent nodes are VALID in SCG)")
+        print(f"🔄 Directed cycles: {result.cycle_count}")
         print(f"📈 Strong Causality Score: {result.strong_causality_score:.3f}/1.000")
         
         if result.nodes_with_multiple_parents:
-            print(f"\n⚠ Nodes with Multiple Parents ({len(result.nodes_with_multiple_parents)}):")
-            for node in result.nodes_with_multiple_parents[:10]:  # Show first 10
+            print(f"\nℹ  Nodes with multiple parents ({len(result.nodes_with_multiple_parents)}) "
+                  f"— valid in SCG if skeleton is forest:")
+            for node in result.nodes_with_multiple_parents[:10]:
                 print(f"  - {node}")
             if len(result.nodes_with_multiple_parents) > 10:
                 print(f"  ... and {len(result.nodes_with_multiple_parents) - 10} more")
         
         if result.cycles_found:
-            print(f"\n🔁 Cycles Detected ({len(result.cycles_found)}):")
-            for i, cycle in enumerate(result.cycles_found[:5], 1):  # Show first 5
+            print(f"\n🔁 Directed Cycles Detected ({len(result.cycles_found)}):")
+            for i, cycle in enumerate(result.cycles_found[:5], 1):
                 print(f"  Cycle {i}: {' → '.join(map(str, cycle))} → {cycle[0]}")
             if len(result.cycles_found) > 5:
                 print(f"  ... and {len(result.cycles_found) - 5} more cycles")
@@ -345,6 +346,14 @@ class PolytreeOptimizer:
     """
     Optimizer untuk transform non-polytree graph menjadi polytree
     dengan minimal edge removals atau modifications.
+
+    .. deprecated::
+        ``reduce_multiple_parents`` is conceptually incorrect for the SCG
+        (strongly causal graph) definition: multi-parent nodes are *valid*
+        in an SCG (see polytree_validator.py module docstring and Definition 2.9
+        of Kinnear & Mazumdar 2023).  Removing the second parent of a multi-parent
+        node destroys valid SCG structure.  This method is retained for reference
+        but should NOT be called in the RiceEWS pipeline.
     """
     
     def __init__(self, verbose: bool = True):

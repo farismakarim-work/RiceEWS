@@ -1,5 +1,6 @@
 {
   "module": "module_03_network_inference",
+  "algorithm": "Kinnear & Mazumdar (2023) Algorithm 1 \u2014 Pairwise Recovery",
   "input": "/home/runner/work/RiceEWS/RiceEWS/data/processed/granger_results.json",
   "output_dir": "/home/runner/work/RiceEWS/RiceEWS/data/processed/module_03",
   "grades": [
@@ -12,484 +13,318 @@
   "summary": [
     {
       "grade": "low1",
-      "nodes": 6,
-      "edges": 11,
-      "edges_removed_for_dag": 19,
+      "nodes": 0,
+      "edges": 0,
+      "W_size": 0,
+      "bidirectional_excluded": 15,
+      "transitive_removed": 0,
+      "edges_removed_for_dag": 0,
       "is_dag": true,
-      "is_polytree": false,
-      "top_leader": "M106",
-      "top_leader_score": 113.34897999100525
+      "is_polytree": true,
+      "top_leader": null,
+      "top_leader_score": 0.0
     },
     {
       "grade": "low2",
-      "nodes": 6,
-      "edges": 14,
-      "edges_removed_for_dag": 16,
+      "nodes": 0,
+      "edges": 0,
+      "W_size": 0,
+      "bidirectional_excluded": 15,
+      "transitive_removed": 0,
+      "edges_removed_for_dag": 0,
       "is_dag": true,
-      "is_polytree": false,
-      "top_leader": "M106",
-      "top_leader_score": 194.6990575714769
+      "is_polytree": true,
+      "top_leader": null,
+      "top_leader_score": 0.0
     },
     {
       "grade": "med1",
-      "nodes": 6,
-      "edges": 15,
-      "edges_removed_for_dag": 15,
+      "nodes": 0,
+      "edges": 0,
+      "W_size": 0,
+      "bidirectional_excluded": 15,
+      "transitive_removed": 0,
+      "edges_removed_for_dag": 0,
       "is_dag": true,
-      "is_polytree": false,
-      "top_leader": "M102",
-      "top_leader_score": 53.630399274405576
+      "is_polytree": true,
+      "top_leader": null,
+      "top_leader_score": 0.0
     },
     {
       "grade": "med2",
-      "nodes": 6,
-      "edges": 10,
-      "edges_removed_for_dag": 20,
+      "nodes": 0,
+      "edges": 0,
+      "W_size": 0,
+      "bidirectional_excluded": 15,
+      "transitive_removed": 0,
+      "edges_removed_for_dag": 0,
       "is_dag": true,
-      "is_polytree": false,
-      "top_leader": "M103",
-      "top_leader_score": 35.79663442725771
+      "is_polytree": true,
+      "top_leader": null,
+      "top_leader_score": 0.0
     }
   ],
   "leaders_per_grade": {
+    "low1": [],
+    "low2": [],
+    "med1": [],
+    "med2": []
+  },
+  "excluded_bidirectional_per_grade": {
     "low1": [
-      {
-        "node": "M106",
-        "out_degree": 1,
-        "in_degree": 4,
-        "weighted_out_degree": 116.34897999100525,
-        "leader_score": 113.34897999100525
-      },
-      {
-        "node": "M103",
-        "out_degree": 1,
-        "in_degree": 2,
-        "weighted_out_degree": 69.83917393569168,
-        "leader_score": 68.83917393569168
-      },
-      {
-        "node": "M102",
-        "out_degree": 4,
-        "in_degree": 0,
-        "weighted_out_degree": 8.353051644410181,
-        "leader_score": 12.353051644410181
-      },
-      {
-        "node": "M104",
-        "out_degree": 1,
-        "in_degree": 2,
-        "weighted_out_degree": 12.796224434212732,
-        "leader_score": 11.796224434212732
-      },
-      {
-        "node": "M101",
-        "out_degree": 4,
-        "in_degree": 0,
-        "weighted_out_degree": 7.238849809332155,
-        "leader_score": 11.238849809332155
-      }
+      [
+        "M102",
+        "M103"
+      ],
+      [
+        "M105",
+        "M106"
+      ],
+      [
+        "M101",
+        "M106"
+      ],
+      [
+        "M102",
+        "M106"
+      ],
+      [
+        "M103",
+        "M105"
+      ],
+      [
+        "M103",
+        "M104"
+      ],
+      [
+        "M104",
+        "M106"
+      ],
+      [
+        "M101",
+        "M102"
+      ],
+      [
+        "M103",
+        "M106"
+      ],
+      [
+        "M104",
+        "M105"
+      ],
+      [
+        "M102",
+        "M104"
+      ],
+      [
+        "M101",
+        "M105"
+      ],
+      [
+        "M101",
+        "M104"
+      ],
+      [
+        "M102",
+        "M105"
+      ],
+      [
+        "M101",
+        "M103"
+      ]
     ],
     "low2": [
-      {
-        "node": "M106",
-        "out_degree": 2,
-        "in_degree": 3,
-        "weighted_out_degree": 195.6990575714769,
-        "leader_score": 194.6990575714769
-      },
-      {
-        "node": "M103",
-        "out_degree": 2,
-        "in_degree": 2,
-        "weighted_out_degree": 47.60375438485251,
-        "leader_score": 47.60375438485251
-      },
-      {
-        "node": "M101",
-        "out_degree": 5,
-        "in_degree": 0,
-        "weighted_out_degree": 29.30772597730738,
-        "leader_score": 34.307725977307385
-      },
-      {
-        "node": "M104",
-        "out_degree": 4,
-        "in_degree": 1,
-        "weighted_out_degree": 21.7061031347128,
-        "leader_score": 24.7061031347128
-      },
-      {
-        "node": "M105",
-        "out_degree": 1,
-        "in_degree": 3,
-        "weighted_out_degree": 0.6850373688928445,
-        "leader_score": -1.3149626311071554
-      }
+      [
+        "M102",
+        "M103"
+      ],
+      [
+        "M105",
+        "M106"
+      ],
+      [
+        "M101",
+        "M106"
+      ],
+      [
+        "M102",
+        "M106"
+      ],
+      [
+        "M103",
+        "M105"
+      ],
+      [
+        "M103",
+        "M104"
+      ],
+      [
+        "M104",
+        "M106"
+      ],
+      [
+        "M101",
+        "M102"
+      ],
+      [
+        "M103",
+        "M106"
+      ],
+      [
+        "M104",
+        "M105"
+      ],
+      [
+        "M102",
+        "M104"
+      ],
+      [
+        "M101",
+        "M105"
+      ],
+      [
+        "M101",
+        "M104"
+      ],
+      [
+        "M102",
+        "M105"
+      ],
+      [
+        "M101",
+        "M103"
+      ]
     ],
     "med1": [
-      {
-        "node": "M102",
-        "out_degree": 3,
-        "in_degree": 2,
-        "weighted_out_degree": 52.630399274405576,
-        "leader_score": 53.630399274405576
-      },
-      {
-        "node": "M101",
-        "out_degree": 5,
-        "in_degree": 0,
-        "weighted_out_degree": 29.47153941013153,
-        "leader_score": 34.47153941013153
-      },
-      {
-        "node": "M105",
-        "out_degree": 4,
-        "in_degree": 1,
-        "weighted_out_degree": 15.537447114270442,
-        "leader_score": 18.537447114270442
-      },
-      {
-        "node": "M104",
-        "out_degree": 1,
-        "in_degree": 4,
-        "weighted_out_degree": 19.529692085405575,
-        "leader_score": 16.529692085405575
-      },
-      {
-        "node": "M106",
-        "out_degree": 2,
-        "in_degree": 3,
-        "weighted_out_degree": 12.895607550638994,
-        "leader_score": 11.895607550638994
-      }
+      [
+        "M102",
+        "M103"
+      ],
+      [
+        "M105",
+        "M106"
+      ],
+      [
+        "M101",
+        "M106"
+      ],
+      [
+        "M102",
+        "M106"
+      ],
+      [
+        "M103",
+        "M105"
+      ],
+      [
+        "M103",
+        "M104"
+      ],
+      [
+        "M104",
+        "M106"
+      ],
+      [
+        "M101",
+        "M102"
+      ],
+      [
+        "M103",
+        "M106"
+      ],
+      [
+        "M104",
+        "M105"
+      ],
+      [
+        "M102",
+        "M104"
+      ],
+      [
+        "M101",
+        "M105"
+      ],
+      [
+        "M101",
+        "M104"
+      ],
+      [
+        "M102",
+        "M105"
+      ],
+      [
+        "M101",
+        "M103"
+      ]
     ],
     "med2": [
-      {
-        "node": "M103",
-        "out_degree": 3,
-        "in_degree": 1,
-        "weighted_out_degree": 33.79663442725771,
-        "leader_score": 35.79663442725771
-      },
-      {
-        "node": "M102",
-        "out_degree": 2,
-        "in_degree": 1,
-        "weighted_out_degree": 29.558679758823295,
-        "leader_score": 30.558679758823295
-      },
-      {
-        "node": "M105",
-        "out_degree": 3,
-        "in_degree": 0,
-        "weighted_out_degree": 13.258303403375258,
-        "leader_score": 16.25830340337526
-      },
-      {
-        "node": "M101",
-        "out_degree": 1,
-        "in_degree": 0,
-        "weighted_out_degree": 3.9673659847837954,
-        "leader_score": 4.967365984783795
-      },
-      {
-        "node": "M106",
-        "out_degree": 1,
-        "in_degree": 4,
-        "weighted_out_degree": 4.541806714524963,
-        "leader_score": 1.541806714524963
-      }
+      [
+        "M102",
+        "M103"
+      ],
+      [
+        "M105",
+        "M106"
+      ],
+      [
+        "M101",
+        "M106"
+      ],
+      [
+        "M102",
+        "M106"
+      ],
+      [
+        "M103",
+        "M105"
+      ],
+      [
+        "M103",
+        "M104"
+      ],
+      [
+        "M104",
+        "M106"
+      ],
+      [
+        "M101",
+        "M102"
+      ],
+      [
+        "M103",
+        "M106"
+      ],
+      [
+        "M104",
+        "M105"
+      ],
+      [
+        "M102",
+        "M104"
+      ],
+      [
+        "M101",
+        "M105"
+      ],
+      [
+        "M101",
+        "M104"
+      ],
+      [
+        "M102",
+        "M105"
+      ],
+      [
+        "M101",
+        "M103"
+      ]
     ]
   },
   "removed_edges_per_grade": {
-    "low1": [
-      [
-        "M101",
-        "M102"
-      ],
-      [
-        "M103",
-        "M101"
-      ],
-      [
-        "M103",
-        "M102"
-      ],
-      [
-        "M104",
-        "M101"
-      ],
-      [
-        "M102",
-        "M101"
-      ],
-      [
-        "M104",
-        "M102"
-      ],
-      [
-        "M104",
-        "M103"
-      ],
-      [
-        "M105",
-        "M101"
-      ],
-      [
-        "M103",
-        "M104"
-      ],
-      [
-        "M105",
-        "M102"
-      ],
-      [
-        "M103",
-        "M105"
-      ],
-      [
-        "M106",
-        "M101"
-      ],
-      [
-        "M106",
-        "M102"
-      ],
-      [
-        "M106",
-        "M103"
-      ],
-      [
-        "M104",
-        "M105"
-      ],
-      [
-        "M106",
-        "M104"
-      ],
-      [
-        "M105",
-        "M103"
-      ],
-      [
-        "M105",
-        "M104"
-      ],
-      [
-        "M105",
-        "M106"
-      ]
-    ],
-    "low2": [
-      [
-        "M102",
-        "M101"
-      ],
-      [
-        "M103",
-        "M101"
-      ],
-      [
-        "M102",
-        "M103"
-      ],
-      [
-        "M102",
-        "M104"
-      ],
-      [
-        "M102",
-        "M105"
-      ],
-      [
-        "M102",
-        "M106"
-      ],
-      [
-        "M104",
-        "M101"
-      ],
-      [
-        "M103",
-        "M104"
-      ],
-      [
-        "M105",
-        "M101"
-      ],
-      [
-        "M103",
-        "M105"
-      ],
-      [
-        "M106",
-        "M101"
-      ],
-      [
-        "M106",
-        "M103"
-      ],
-      [
-        "M106",
-        "M104"
-      ],
-      [
-        "M105",
-        "M103"
-      ],
-      [
-        "M105",
-        "M104"
-      ],
-      [
-        "M105",
-        "M106"
-      ]
-    ],
-    "med1": [
-      [
-        "M102",
-        "M101"
-      ],
-      [
-        "M103",
-        "M101"
-      ],
-      [
-        "M103",
-        "M102"
-      ],
-      [
-        "M104",
-        "M101"
-      ],
-      [
-        "M104",
-        "M102"
-      ],
-      [
-        "M103",
-        "M104"
-      ],
-      [
-        "M103",
-        "M105"
-      ],
-      [
-        "M103",
-        "M106"
-      ],
-      [
-        "M105",
-        "M101"
-      ],
-      [
-        "M104",
-        "M105"
-      ],
-      [
-        "M104",
-        "M106"
-      ],
-      [
-        "M102",
-        "M105"
-      ],
-      [
-        "M106",
-        "M101"
-      ],
-      [
-        "M106",
-        "M102"
-      ],
-      [
-        "M106",
-        "M105"
-      ]
-    ],
-    "med2": [
-      [
-        "M102",
-        "M101"
-      ],
-      [
-        "M101",
-        "M102"
-      ],
-      [
-        "M101",
-        "M103"
-      ],
-      [
-        "M104",
-        "M101"
-      ],
-      [
-        "M101",
-        "M104"
-      ],
-      [
-        "M105",
-        "M101"
-      ],
-      [
-        "M105",
-        "M102"
-      ],
-      [
-        "M101",
-        "M105"
-      ],
-      [
-        "M106",
-        "M101"
-      ],
-      [
-        "M106",
-        "M102"
-      ],
-      [
-        "M103",
-        "M101"
-      ],
-      [
-        "M102",
-        "M103"
-      ],
-      [
-        "M104",
-        "M102"
-      ],
-      [
-        "M104",
-        "M103"
-      ],
-      [
-        "M104",
-        "M105"
-      ],
-      [
-        "M104",
-        "M106"
-      ],
-      [
-        "M102",
-        "M105"
-      ],
-      [
-        "M106",
-        "M103"
-      ],
-      [
-        "M106",
-        "M105"
-      ],
-      [
-        "M103",
-        "M105"
-      ]
-    ]
+    "low1": [],
+    "low2": [],
+    "med1": [],
+    "med2": []
   },
   "visualizations": {
     "low1": "/home/runner/work/RiceEWS/RiceEWS/data/processed/module_03/network_graph_low1.html",
