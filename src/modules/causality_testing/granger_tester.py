@@ -764,8 +764,25 @@ class GrangerCausalityTester:
                 })
 
             pd.DataFrame(node_rows).to_excel(writer, sheet_name='Summary', index=False)
-            self.save_as_csv(all_results, str(output_path.parent))
-            pd.read_csv(output_path.parent / "granger_pairwise.csv").to_excel(
+            pairwise_rows = []
+            for relationship, test_result in all_results['pairwise_tests'].items():
+                source_node, target_node = _parse_relation_nodes(relationship)
+                source_market, source_grade = _split_node_id(source_node)
+                target_market, target_grade = _split_node_id(target_node)
+                pairwise_rows.append({
+                    'source': source_market,
+                    'target': target_market,
+                    'grade_source': source_grade,
+                    'grade_target': target_grade,
+                    'source_node': source_node,
+                    'target_node': target_node,
+                    'granger_causes': _parse_granger_flag(test_result.get('granger_causes', False)),
+                    'lag': test_result.get('lag_order'),
+                    'p_value': test_result.get('p_value'),
+                    'adjusted_p_value': test_result.get('p_value_bh'),
+                    'test_statistic': test_result.get('f_statistic'),
+                })
+            pd.DataFrame(pairwise_rows).to_excel(
                 writer,
                 sheet_name='PairwiseTests',
                 index=False,

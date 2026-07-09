@@ -1,1 +1,7 @@
-node,out_degree,in_degree,weighted_out_degree,leader_score
+node,market_id,grade,out_degree,in_degree,weighted_out_degree,leader_score
+M101_med1,101,med1,10,0,74.26927565270036,10
+M106_med1,106,med1,1,0,10.438471108697074,1
+M103_med1,103,med1,1,1,6.518440126588613,1
+M105_med1,105,med1,1,0,5.904560311121842,1
+M102_med1,102,med1,0,1,0.0,0
+M104_med1,104,med1,0,1,0.0,0

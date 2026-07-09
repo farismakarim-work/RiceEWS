@@ -1,335 +1,1328 @@
 {
   "module": "module_03_network_inference",
   "algorithm": "Kinnear & Mazumdar (2023) Algorithm 1 \u2014 Pairwise Recovery",
-  "input": "/home/runner/work/RiceEWS/RiceEWS/data/processed/granger_results.json",
+  "input": "/home/runner/work/RiceEWS/RiceEWS/data/processed/module_02/granger_results.json",
   "output_dir": "/home/runner/work/RiceEWS/RiceEWS/data/processed/module_03",
-  "grades": [
-    "low1",
-    "low2",
-    "med1",
-    "med2"
+  "analysis_type": "integrated",
+  "nodes": [
+    {
+      "node_id": "M101_low1",
+      "market_id": 101,
+      "grade": "low1"
+    },
+    {
+      "node_id": "M101_low2",
+      "market_id": 101,
+      "grade": "low2"
+    },
+    {
+      "node_id": "M101_med1",
+      "market_id": 101,
+      "grade": "med1"
+    },
+    {
+      "node_id": "M101_med2",
+      "market_id": 101,
+      "grade": "med2"
+    },
+    {
+      "node_id": "M102_low1",
+      "market_id": 102,
+      "grade": "low1"
+    },
+    {
+      "node_id": "M102_low2",
+      "market_id": 102,
+      "grade": "low2"
+    },
+    {
+      "node_id": "M102_med1",
+      "market_id": 102,
+      "grade": "med1"
+    },
+    {
+      "node_id": "M102_med2",
+      "market_id": 102,
+      "grade": "med2"
+    },
+    {
+      "node_id": "M103_low1",
+      "market_id": 103,
+      "grade": "low1"
+    },
+    {
+      "node_id": "M103_low2",
+      "market_id": 103,
+      "grade": "low2"
+    },
+    {
+      "node_id": "M103_med1",
+      "market_id": 103,
+      "grade": "med1"
+    },
+    {
+      "node_id": "M103_med2",
+      "market_id": 103,
+      "grade": "med2"
+    },
+    {
+      "node_id": "M104_low1",
+      "market_id": 104,
+      "grade": "low1"
+    },
+    {
+      "node_id": "M104_low2",
+      "market_id": 104,
+      "grade": "low2"
+    },
+    {
+      "node_id": "M104_med1",
+      "market_id": 104,
+      "grade": "med1"
+    },
+    {
+      "node_id": "M104_med2",
+      "market_id": 104,
+      "grade": "med2"
+    },
+    {
+      "node_id": "M105_low1",
+      "market_id": 105,
+      "grade": "low1"
+    },
+    {
+      "node_id": "M105_low2",
+      "market_id": 105,
+      "grade": "low2"
+    },
+    {
+      "node_id": "M105_med1",
+      "market_id": 105,
+      "grade": "med1"
+    },
+    {
+      "node_id": "M105_med2",
+      "market_id": 105,
+      "grade": "med2"
+    },
+    {
+      "node_id": "M106_low1",
+      "market_id": 106,
+      "grade": "low1"
+    },
+    {
+      "node_id": "M106_low2",
+      "market_id": 106,
+      "grade": "low2"
+    },
+    {
+      "node_id": "M106_med1",
+      "market_id": 106,
+      "grade": "med1"
+    },
+    {
+      "node_id": "M106_med2",
+      "market_id": 106,
+      "grade": "med2"
+    }
   ],
-  "enforce_dag": true,
+  "levels": {
+    "M101_low1": 0,
+    "M101_low2": 0,
+    "M101_med1": 0,
+    "M101_med2": 0,
+    "M102_low1": 1,
+    "M102_low2": 0,
+    "M102_med1": 1,
+    "M102_med2": 1,
+    "M103_low1": 1,
+    "M103_low2": 2,
+    "M103_med1": 1,
+    "M103_med2": 1,
+    "M104_low1": 0,
+    "M104_low2": 1,
+    "M104_med1": 1,
+    "M104_med2": 1,
+    "M105_low1": 0,
+    "M105_low2": 1,
+    "M105_med1": 0,
+    "M105_med2": 0,
+    "M106_low1": 0,
+    "M106_low2": 0,
+    "M106_med1": 0,
+    "M106_med2": 1
+  },
+  "ancestor_relations": 20,
+  "recovered_edges": 19,
+  "excluded_bidirectional_pairs": [
+    [
+      "M102_med1",
+      "M103_low2"
+    ],
+    [
+      "M106_low1",
+      "M106_low2"
+    ],
+    [
+      "M104_med1",
+      "M106_low1"
+    ],
+    [
+      "M104_low1",
+      "M106_low2"
+    ],
+    [
+      "M102_med2",
+      "M103_med1"
+    ],
+    [
+      "M102_low1",
+      "M103_low2"
+    ],
+    [
+      "M101_low2",
+      "M106_med1"
+    ],
+    [
+      "M102_med2",
+      "M103_med2"
+    ],
+    [
+      "M103_low2",
+      "M104_med1"
+    ],
+    [
+      "M103_low2",
+      "M106_low1"
+    ],
+    [
+      "M104_med2",
+      "M105_low1"
+    ],
+    [
+      "M102_med1",
+      "M104_med1"
+    ],
+    [
+      "M101_low2",
+      "M106_med2"
+    ],
+    [
+      "M103_med1",
+      "M105_low1"
+    ],
+    [
+      "M101_med1",
+      "M102_low2"
+    ],
+    [
+      "M104_low2",
+      "M105_low1"
+    ],
+    [
+      "M103_med1",
+      "M104_low1"
+    ],
+    [
+      "M102_low2",
+      "M103_med2"
+    ],
+    [
+      "M103_med1",
+      "M105_low2"
+    ],
+    [
+      "M103_low1",
+      "M105_low2"
+    ],
+    [
+      "M104_low2",
+      "M105_low2"
+    ],
+    [
+      "M103_low1",
+      "M104_med1"
+    ],
+    [
+      "M103_low1",
+      "M106_low2"
+    ],
+    [
+      "M103_med1",
+      "M104_med1"
+    ],
+    [
+      "M104_med2",
+      "M106_low2"
+    ],
+    [
+      "M103_med2",
+      "M105_low2"
+    ],
+    [
+      "M103_med2",
+      "M106_low2"
+    ],
+    [
+      "M103_low2",
+      "M105_low1"
+    ],
+    [
+      "M104_med2",
+      "M106_low1"
+    ],
+    [
+      "M105_med2",
+      "M106_med1"
+    ],
+    [
+      "M103_low2",
+      "M104_low1"
+    ],
+    [
+      "M102_low2",
+      "M103_low1"
+    ],
+    [
+      "M103_low1",
+      "M104_low2"
+    ],
+    [
+      "M103_low1",
+      "M105_low1"
+    ],
+    [
+      "M101_low2",
+      "M105_low2"
+    ],
+    [
+      "M104_low1",
+      "M105_low1"
+    ],
+    [
+      "M102_low2",
+      "M103_low2"
+    ],
+    [
+      "M101_low2",
+      "M105_low1"
+    ],
+    [
+      "M102_med1",
+      "M103_med2"
+    ],
+    [
+      "M104_low2",
+      "M106_low2"
+    ],
+    [
+      "M102_med1",
+      "M104_med2"
+    ],
+    [
+      "M104_med1",
+      "M105_low1"
+    ],
+    [
+      "M102_med1",
+      "M103_low1"
+    ],
+    [
+      "M102_med1",
+      "M104_low2"
+    ],
+    [
+      "M103_low2",
+      "M106_low2"
+    ],
+    [
+      "M103_med2",
+      "M104_low2"
+    ],
+    [
+      "M103_med2",
+      "M105_low1"
+    ],
+    [
+      "M103_med2",
+      "M104_low1"
+    ],
+    [
+      "M102_low2",
+      "M103_med1"
+    ],
+    [
+      "M103_med2",
+      "M106_low1"
+    ],
+    [
+      "M104_med1",
+      "M106_low2"
+    ],
+    [
+      "M104_low1",
+      "M106_low1"
+    ],
+    [
+      "M103_low2",
+      "M104_med2"
+    ],
+    [
+      "M103_low1",
+      "M106_low1"
+    ],
+    [
+      "M101_med1",
+      "M106_med1"
+    ],
+    [
+      "M104_low2",
+      "M106_low1"
+    ],
+    [
+      "M105_med2",
+      "M106_med2"
+    ],
+    [
+      "M105_low1",
+      "M105_low2"
+    ],
+    [
+      "M104_low1",
+      "M105_low2"
+    ],
+    [
+      "M102_med2",
+      "M103_low1"
+    ],
+    [
+      "M103_med1",
+      "M106_low2"
+    ],
+    [
+      "M102_med1",
+      "M104_low1"
+    ],
+    [
+      "M102_low1",
+      "M103_med1"
+    ],
+    [
+      "M101_low1",
+      "M104_med1"
+    ],
+    [
+      "M103_med1",
+      "M104_low2"
+    ],
+    [
+      "M104_med1",
+      "M105_low2"
+    ],
+    [
+      "M103_med2",
+      "M104_med2"
+    ],
+    [
+      "M102_low1",
+      "M103_med2"
+    ],
+    [
+      "M102_med2",
+      "M104_med2"
+    ],
+    [
+      "M102_med1",
+      "M103_med1"
+    ],
+    [
+      "M103_low2",
+      "M105_low2"
+    ],
+    [
+      "M106_med1",
+      "M106_med2"
+    ],
+    [
+      "M102_med2",
+      "M103_low2"
+    ],
+    [
+      "M103_med2",
+      "M104_med1"
+    ],
+    [
+      "M104_med2",
+      "M105_low2"
+    ],
+    [
+      "M103_low2",
+      "M104_low2"
+    ],
+    [
+      "M103_med1",
+      "M104_med2"
+    ],
+    [
+      "M102_med1",
+      "M102_med2"
+    ],
+    [
+      "M103_low1",
+      "M104_med2"
+    ],
+    [
+      "M103_med1",
+      "M106_low1"
+    ]
+  ],
+  "excluded_cycle_relations": [
+    [
+      "M101_low1",
+      "M102_med1"
+    ],
+    [
+      "M101_low1",
+      "M102_med2"
+    ],
+    [
+      "M101_low1",
+      "M103_low1"
+    ],
+    [
+      "M101_low1",
+      "M103_med1"
+    ],
+    [
+      "M101_low1",
+      "M103_med2"
+    ],
+    [
+      "M101_low1",
+      "M104_low1"
+    ],
+    [
+      "M101_low1",
+      "M104_low2"
+    ],
+    [
+      "M101_low1",
+      "M104_med2"
+    ],
+    [
+      "M101_low2",
+      "M102_low1"
+    ],
+    [
+      "M101_low2",
+      "M102_low2"
+    ],
+    [
+      "M101_low2",
+      "M102_med1"
+    ],
+    [
+      "M101_low2",
+      "M102_med2"
+    ],
+    [
+      "M101_low2",
+      "M103_low1"
+    ],
+    [
+      "M101_low2",
+      "M103_med1"
+    ],
+    [
+      "M101_low2",
+      "M103_med2"
+    ],
+    [
+      "M101_low2",
+      "M104_low1"
+    ],
+    [
+      "M101_low2",
+      "M104_low2"
+    ],
+    [
+      "M101_low2",
+      "M104_med1"
+    ],
+    [
+      "M101_low2",
+      "M104_med2"
+    ],
+    [
+      "M101_low2",
+      "M106_low1"
+    ],
+    [
+      "M101_low2",
+      "M106_low2"
+    ],
+    [
+      "M101_med2",
+      "M106_med2"
+    ],
+    [
+      "M102_low1",
+      "M101_med2"
+    ],
+    [
+      "M102_low1",
+      "M103_low1"
+    ],
+    [
+      "M102_low1",
+      "M106_med1"
+    ],
+    [
+      "M102_low1",
+      "M106_med2"
+    ],
+    [
+      "M102_low2",
+      "M104_med1"
+    ],
+    [
+      "M102_low2",
+      "M104_med2"
+    ],
+    [
+      "M102_low2",
+      "M106_med1"
+    ],
+    [
+      "M102_low2",
+      "M106_med2"
+    ],
+    [
+      "M102_med1",
+      "M105_low1"
+    ],
+    [
+      "M102_med1",
+      "M106_low1"
+    ],
+    [
+      "M102_med1",
+      "M106_low2"
+    ],
+    [
+      "M102_med1",
+      "M106_med1"
+    ],
+    [
+      "M102_med1",
+      "M106_med2"
+    ],
+    [
+      "M102_med2",
+      "M104_med1"
+    ],
+    [
+      "M102_med2",
+      "M106_med1"
+    ],
+    [
+      "M102_med2",
+      "M106_med2"
+    ],
+    [
+      "M103_low1",
+      "M104_low1"
+    ],
+    [
+      "M103_med1",
+      "M101_med2"
+    ],
+    [
+      "M103_med1",
+      "M103_low1"
+    ],
+    [
+      "M103_med2",
+      "M101_med2"
+    ],
+    [
+      "M103_med2",
+      "M103_low1"
+    ],
+    [
+      "M104_low1",
+      "M102_low2"
+    ],
+    [
+      "M104_low1",
+      "M102_med2"
+    ],
+    [
+      "M104_low1",
+      "M104_med1"
+    ],
+    [
+      "M104_low1",
+      "M104_med2"
+    ],
+    [
+      "M104_low1",
+      "M105_med1"
+    ],
+    [
+      "M104_low1",
+      "M105_med2"
+    ],
+    [
+      "M104_low2",
+      "M102_low1"
+    ],
+    [
+      "M104_low2",
+      "M102_low2"
+    ],
+    [
+      "M104_low2",
+      "M102_med2"
+    ],
+    [
+      "M104_med1",
+      "M102_low1"
+    ],
+    [
+      "M104_med1",
+      "M105_med1"
+    ],
+    [
+      "M104_med1",
+      "M105_med2"
+    ],
+    [
+      "M104_med2",
+      "M102_low1"
+    ],
+    [
+      "M105_low1",
+      "M101_low1"
+    ],
+    [
+      "M105_low1",
+      "M102_low1"
+    ],
+    [
+      "M105_med1",
+      "M101_low2"
+    ],
+    [
+      "M105_med1",
+      "M102_med1"
+    ],
+    [
+      "M105_med1",
+      "M103_low1"
+    ],
+    [
+      "M105_med1",
+      "M103_med1"
+    ],
+    [
+      "M105_med1",
+      "M103_med2"
+    ],
+    [
+      "M105_med1",
+      "M106_med1"
+    ],
+    [
+      "M105_med1",
+      "M106_med2"
+    ],
+    [
+      "M105_med2",
+      "M101_low1"
+    ],
+    [
+      "M105_med2",
+      "M101_low2"
+    ],
+    [
+      "M105_med2",
+      "M102_med1"
+    ],
+    [
+      "M105_med2",
+      "M103_low1"
+    ],
+    [
+      "M105_med2",
+      "M103_med1"
+    ],
+    [
+      "M105_med2",
+      "M103_med2"
+    ],
+    [
+      "M106_low1",
+      "M102_low1"
+    ],
+    [
+      "M106_low1",
+      "M105_low1"
+    ],
+    [
+      "M106_low2",
+      "M102_low1"
+    ],
+    [
+      "M106_low2",
+      "M105_low1"
+    ],
+    [
+      "M106_med1",
+      "M101_low1"
+    ],
+    [
+      "M106_med1",
+      "M103_low1"
+    ],
+    [
+      "M106_med1",
+      "M103_med1"
+    ],
+    [
+      "M106_med1",
+      "M103_med2"
+    ],
+    [
+      "M106_med1",
+      "M104_med1"
+    ],
+    [
+      "M106_med1",
+      "M104_med2"
+    ],
+    [
+      "M106_med2",
+      "M103_low1"
+    ],
+    [
+      "M106_med2",
+      "M103_med1"
+    ],
+    [
+      "M106_med2",
+      "M103_med2"
+    ],
+    [
+      "M106_med2",
+      "M104_med1"
+    ],
+    [
+      "M106_med2",
+      "M104_med2"
+    ]
+  ],
   "summary": [
     {
       "grade": "low1",
-      "nodes": 0,
-      "edges": 0,
-      "W_size": 0,
-      "bidirectional_excluded": 15,
-      "transitive_removed": 0,
-      "edges_removed_for_dag": 0,
+      "nodes": 6,
+      "edges": 3,
+      "out_edges": 1,
+      "in_edges": 2,
+      "cross_grade_edges": 3,
       "is_dag": true,
-      "is_polytree": true,
-      "top_leader": null,
-      "top_leader_score": 0.0
+      "is_polytree": false,
+      "top_leader": "M106_low1",
+      "top_leader_score": 1.0
     },
     {
       "grade": "low2",
-      "nodes": 0,
-      "edges": 0,
-      "W_size": 0,
-      "bidirectional_excluded": 15,
-      "transitive_removed": 0,
-      "edges_removed_for_dag": 0,
+      "nodes": 6,
+      "edges": 10,
+      "out_edges": 2,
+      "in_edges": 10,
+      "cross_grade_edges": 8,
       "is_dag": true,
-      "is_polytree": true,
-      "top_leader": null,
-      "top_leader_score": 0.0
+      "is_polytree": false,
+      "top_leader": "M106_low2",
+      "top_leader_score": 1.0
     },
     {
       "grade": "med1",
-      "nodes": 0,
-      "edges": 0,
-      "W_size": 0,
-      "bidirectional_excluded": 15,
-      "transitive_removed": 0,
-      "edges_removed_for_dag": 0,
+      "nodes": 6,
+      "edges": 13,
+      "out_edges": 13,
+      "in_edges": 3,
+      "cross_grade_edges": 10,
       "is_dag": true,
-      "is_polytree": true,
-      "top_leader": null,
-      "top_leader_score": 0.0
+      "is_polytree": false,
+      "top_leader": "M101_med1",
+      "top_leader_score": 10.0
     },
     {
       "grade": "med2",
-      "nodes": 0,
-      "edges": 0,
-      "W_size": 0,
-      "bidirectional_excluded": 15,
-      "transitive_removed": 0,
-      "edges_removed_for_dag": 0,
+      "nodes": 6,
+      "edges": 7,
+      "out_edges": 3,
+      "in_edges": 4,
+      "cross_grade_edges": 7,
       "is_dag": true,
-      "is_polytree": true,
-      "top_leader": null,
-      "top_leader_score": 0.0
+      "is_polytree": false,
+      "top_leader": "M106_med2",
+      "top_leader_score": 1.0
     }
   ],
   "leaders_per_grade": {
-    "low1": [],
-    "low2": [],
-    "med1": [],
-    "med2": []
-  },
-  "excluded_bidirectional_per_grade": {
     "low1": [
-      [
-        "M102",
-        "M103"
-      ],
-      [
-        "M105",
-        "M106"
-      ],
-      [
-        "M101",
-        "M106"
-      ],
-      [
-        "M102",
-        "M106"
-      ],
-      [
-        "M103",
-        "M105"
-      ],
-      [
-        "M103",
-        "M104"
-      ],
-      [
-        "M104",
-        "M106"
-      ],
-      [
-        "M101",
-        "M102"
-      ],
-      [
-        "M103",
-        "M106"
-      ],
-      [
-        "M104",
-        "M105"
-      ],
-      [
-        "M102",
-        "M104"
-      ],
-      [
-        "M101",
-        "M105"
-      ],
-      [
-        "M101",
-        "M104"
-      ],
-      [
-        "M102",
-        "M105"
-      ],
-      [
-        "M101",
-        "M103"
-      ]
+      {
+        "node": "M106_low1",
+        "market_id": 106,
+        "grade": "low1",
+        "out_degree": 1,
+        "in_degree": 0,
+        "weighted_out_degree": 103.06640783455086,
+        "leader_score": 1
+      },
+      {
+        "node": "M101_low1",
+        "market_id": 101,
+        "grade": "low1",
+        "out_degree": 0,
+        "in_degree": 0,
+        "weighted_out_degree": 0.0,
+        "leader_score": 0
+      },
+      {
+        "node": "M104_low1",
+        "market_id": 104,
+        "grade": "low1",
+        "out_degree": 0,
+        "in_degree": 0,
+        "weighted_out_degree": 0.0,
+        "leader_score": 0
+      },
+      {
+        "node": "M105_low1",
+        "market_id": 105,
+        "grade": "low1",
+        "out_degree": 0,
+        "in_degree": 0,
+        "weighted_out_degree": 0.0,
+        "leader_score": 0
+      },
+      {
+        "node": "M102_low1",
+        "market_id": 102,
+        "grade": "low1",
+        "out_degree": 0,
+        "in_degree": 1,
+        "weighted_out_degree": 0.0,
+        "leader_score": 0
+      },
+      {
+        "node": "M103_low1",
+        "market_id": 103,
+        "grade": "low1",
+        "out_degree": 0,
+        "in_degree": 1,
+        "weighted_out_degree": 0.0,
+        "leader_score": 0
+      }
     ],
     "low2": [
-      [
-        "M102",
-        "M103"
-      ],
-      [
-        "M105",
-        "M106"
-      ],
-      [
-        "M101",
-        "M106"
-      ],
-      [
-        "M102",
-        "M106"
-      ],
-      [
-        "M103",
-        "M105"
-      ],
-      [
-        "M103",
-        "M104"
-      ],
-      [
-        "M104",
-        "M106"
-      ],
-      [
-        "M101",
-        "M102"
-      ],
-      [
-        "M103",
-        "M106"
-      ],
-      [
-        "M104",
-        "M105"
-      ],
-      [
-        "M102",
-        "M104"
-      ],
-      [
-        "M101",
-        "M105"
-      ],
-      [
-        "M101",
-        "M104"
-      ],
-      [
-        "M102",
-        "M105"
-      ],
-      [
-        "M101",
-        "M103"
-      ]
+      {
+        "node": "M106_low2",
+        "market_id": 106,
+        "grade": "low2",
+        "out_degree": 1,
+        "in_degree": 0,
+        "weighted_out_degree": 194.69364457726522,
+        "leader_score": 1
+      },
+      {
+        "node": "M101_low2",
+        "market_id": 101,
+        "grade": "low2",
+        "out_degree": 1,
+        "in_degree": 0,
+        "weighted_out_degree": 6.753746343959483,
+        "leader_score": 1
+      },
+      {
+        "node": "M102_low2",
+        "market_id": 102,
+        "grade": "low2",
+        "out_degree": 0,
+        "in_degree": 0,
+        "weighted_out_degree": 0.0,
+        "leader_score": 0
+      },
+      {
+        "node": "M104_low2",
+        "market_id": 104,
+        "grade": "low2",
+        "out_degree": 0,
+        "in_degree": 1,
+        "weighted_out_degree": 0.0,
+        "leader_score": 0
+      },
+      {
+        "node": "M105_low2",
+        "market_id": 105,
+        "grade": "low2",
+        "out_degree": 0,
+        "in_degree": 2,
+        "weighted_out_degree": 0.0,
+        "leader_score": 0
+      },
+      {
+        "node": "M103_low2",
+        "market_id": 103,
+        "grade": "low2",
+        "out_degree": 0,
+        "in_degree": 7,
+        "weighted_out_degree": 0.0,
+        "leader_score": 0
+      }
     ],
     "med1": [
-      [
-        "M102",
-        "M103"
-      ],
-      [
-        "M105",
-        "M106"
-      ],
-      [
-        "M101",
-        "M106"
-      ],
-      [
-        "M102",
-        "M106"
-      ],
-      [
-        "M103",
-        "M105"
-      ],
-      [
-        "M103",
-        "M104"
-      ],
-      [
-        "M104",
-        "M106"
-      ],
-      [
-        "M101",
-        "M102"
-      ],
-      [
-        "M103",
-        "M106"
-      ],
-      [
-        "M104",
-        "M105"
-      ],
-      [
-        "M102",
-        "M104"
-      ],
-      [
-        "M101",
-        "M105"
-      ],
-      [
-        "M101",
-        "M104"
-      ],
-      [
-        "M102",
-        "M105"
-      ],
-      [
-        "M101",
-        "M103"
-      ]
+      {
+        "node": "M101_med1",
+        "market_id": 101,
+        "grade": "med1",
+        "out_degree": 10,
+        "in_degree": 0,
+        "weighted_out_degree": 74.26927565270036,
+        "leader_score": 10
+      },
+      {
+        "node": "M106_med1",
+        "market_id": 106,
+        "grade": "med1",
+        "out_degree": 1,
+        "in_degree": 0,
+        "weighted_out_degree": 10.438471108697074,
+        "leader_score": 1
+      },
+      {
+        "node": "M103_med1",
+        "market_id": 103,
+        "grade": "med1",
+        "out_degree": 1,
+        "in_degree": 1,
+        "weighted_out_degree": 6.518440126588613,
+        "leader_score": 1
+      },
+      {
+        "node": "M105_med1",
+        "market_id": 105,
+        "grade": "med1",
+        "out_degree": 1,
+        "in_degree": 0,
+        "weighted_out_degree": 5.904560311121842,
+        "leader_score": 1
+      },
+      {
+        "node": "M102_med1",
+        "market_id": 102,
+        "grade": "med1",
+        "out_degree": 0,
+        "in_degree": 1,
+        "weighted_out_degree": 0.0,
+        "leader_score": 0
+      },
+      {
+        "node": "M104_med1",
+        "market_id": 104,
+        "grade": "med1",
+        "out_degree": 0,
+        "in_degree": 1,
+        "weighted_out_degree": 0.0,
+        "leader_score": 0
+      }
     ],
     "med2": [
-      [
-        "M102",
-        "M103"
-      ],
-      [
-        "M105",
-        "M106"
-      ],
-      [
-        "M101",
-        "M106"
-      ],
-      [
-        "M102",
-        "M106"
-      ],
-      [
-        "M103",
-        "M105"
-      ],
-      [
-        "M103",
-        "M104"
-      ],
-      [
-        "M104",
-        "M106"
-      ],
-      [
-        "M101",
-        "M102"
-      ],
-      [
-        "M103",
-        "M106"
-      ],
-      [
-        "M104",
-        "M105"
-      ],
-      [
-        "M102",
-        "M104"
-      ],
-      [
-        "M101",
-        "M105"
-      ],
-      [
-        "M101",
-        "M104"
-      ],
-      [
-        "M102",
-        "M105"
-      ],
-      [
-        "M101",
-        "M103"
-      ]
+      {
+        "node": "M106_med2",
+        "market_id": 106,
+        "grade": "med2",
+        "out_degree": 1,
+        "in_degree": 1,
+        "weighted_out_degree": 10.524980836879067,
+        "leader_score": 1
+      },
+      {
+        "node": "M105_med2",
+        "market_id": 105,
+        "grade": "med2",
+        "out_degree": 1,
+        "in_degree": 0,
+        "weighted_out_degree": 7.37497270685071,
+        "leader_score": 1
+      },
+      {
+        "node": "M103_med2",
+        "market_id": 103,
+        "grade": "med2",
+        "out_degree": 1,
+        "in_degree": 1,
+        "weighted_out_degree": 3.137250155106508,
+        "leader_score": 1
+      },
+      {
+        "node": "M101_med2",
+        "market_id": 101,
+        "grade": "med2",
+        "out_degree": 0,
+        "in_degree": 0,
+        "weighted_out_degree": 0.0,
+        "leader_score": 0
+      },
+      {
+        "node": "M102_med2",
+        "market_id": 102,
+        "grade": "med2",
+        "out_degree": 0,
+        "in_degree": 1,
+        "weighted_out_degree": 0.0,
+        "leader_score": 0
+      },
+      {
+        "node": "M104_med2",
+        "market_id": 104,
+        "grade": "med2",
+        "out_degree": 0,
+        "in_degree": 1,
+        "weighted_out_degree": 0.0,
+        "leader_score": 0
+      }
     ]
   },
-  "removed_edges_per_grade": {
-    "low1": [],
-    "low2": [],
-    "med1": [],
-    "med2": []
-  },
+  "integrated_leaders": [
+    {
+      "node": "M101_med1",
+      "market_id": 101,
+      "grade": "med1",
+      "out_degree": 10,
+      "in_degree": 0,
+      "weighted_out_degree": 74.26927565270036,
+      "leader_score": 10
+    },
+    {
+      "node": "M106_low2",
+      "market_id": 106,
+      "grade": "low2",
+      "out_degree": 1,
+      "in_degree": 0,
+      "weighted_out_degree": 194.69364457726522,
+      "leader_score": 1
+    },
+    {
+      "node": "M106_low1",
+      "market_id": 106,
+      "grade": "low1",
+      "out_degree": 1,
+      "in_degree": 0,
+      "weighted_out_degree": 103.06640783455086,
+      "leader_score": 1
+    },
+    {
+      "node": "M106_med2",
+      "market_id": 106,
+      "grade": "med2",
+      "out_degree": 1,
+      "in_degree": 1,
+      "weighted_out_degree": 10.524980836879067,
+      "leader_score": 1
+    },
+    {
+      "node": "M106_med1",
+      "market_id": 106,
+      "grade": "med1",
+      "out_degree": 1,
+      "in_degree": 0,
+      "weighted_out_degree": 10.438471108697074,
+      "leader_score": 1
+    },
+    {
+      "node": "M105_med2",
+      "market_id": 105,
+      "grade": "med2",
+      "out_degree": 1,
+      "in_degree": 0,
+      "weighted_out_degree": 7.37497270685071,
+      "leader_score": 1
+    },
+    {
+      "node": "M101_low2",
+      "market_id": 101,
+      "grade": "low2",
+      "out_degree": 1,
+      "in_degree": 0,
+      "weighted_out_degree": 6.753746343959483,
+      "leader_score": 1
+    },
+    {
+      "node": "M103_med1",
+      "market_id": 103,
+      "grade": "med1",
+      "out_degree": 1,
+      "in_degree": 1,
+      "weighted_out_degree": 6.518440126588613,
+      "leader_score": 1
+    },
+    {
+      "node": "M105_med1",
+      "market_id": 105,
+      "grade": "med1",
+      "out_degree": 1,
+      "in_degree": 0,
+      "weighted_out_degree": 5.904560311121842,
+      "leader_score": 1
+    },
+    {
+      "node": "M103_med2",
+      "market_id": 103,
+      "grade": "med2",
+      "out_degree": 1,
+      "in_degree": 1,
+      "weighted_out_degree": 3.137250155106508,
+      "leader_score": 1
+    },
+    {
+      "node": "M101_low1",
+      "market_id": 101,
+      "grade": "low1",
+      "out_degree": 0,
+      "in_degree": 0,
+      "weighted_out_degree": 0.0,
+      "leader_score": 0
+    },
+    {
+      "node": "M101_med2",
+      "market_id": 101,
+      "grade": "med2",
+      "out_degree": 0,
+      "in_degree": 0,
+      "weighted_out_degree": 0.0,
+      "leader_score": 0
+    },
+    {
+      "node": "M102_low2",
+      "market_id": 102,
+      "grade": "low2",
+      "out_degree": 0,
+      "in_degree": 0,
+      "weighted_out_degree": 0.0,
+      "leader_score": 0
+    },
+    {
+      "node": "M104_low1",
+      "market_id": 104,
+      "grade": "low1",
+      "out_degree": 0,
+      "in_degree": 0,
+      "weighted_out_degree": 0.0,
+      "leader_score": 0
+    },
+    {
+      "node": "M105_low1",
+      "market_id": 105,
+      "grade": "low1",
+      "out_degree": 0,
+      "in_degree": 0,
+      "weighted_out_degree": 0.0,
+      "leader_score": 0
+    },
+    {
+      "node": "M102_low1",
+      "market_id": 102,
+      "grade": "low1",
+      "out_degree": 0,
+      "in_degree": 1,
+      "weighted_out_degree": 0.0,
+      "leader_score": 0
+    },
+    {
+      "node": "M102_med1",
+      "market_id": 102,
+      "grade": "med1",
+      "out_degree": 0,
+      "in_degree": 1,
+      "weighted_out_degree": 0.0,
+      "leader_score": 0
+    },
+    {
+      "node": "M102_med2",
+      "market_id": 102,
+      "grade": "med2",
+      "out_degree": 0,
+      "in_degree": 1,
+      "weighted_out_degree": 0.0,
+      "leader_score": 0
+    },
+    {
+      "node": "M103_low1",
+      "market_id": 103,
+      "grade": "low1",
+      "out_degree": 0,
+      "in_degree": 1,
+      "weighted_out_degree": 0.0,
+      "leader_score": 0
+    },
+    {
+      "node": "M104_low2",
+      "market_id": 104,
+      "grade": "low2",
+      "out_degree": 0,
+      "in_degree": 1,
+      "weighted_out_degree": 0.0,
+      "leader_score": 0
+    },
+    {
+      "node": "M104_med1",
+      "market_id": 104,
+      "grade": "med1",
+      "out_degree": 0,
+      "in_degree": 1,
+      "weighted_out_degree": 0.0,
+      "leader_score": 0
+    },
+    {
+      "node": "M104_med2",
+      "market_id": 104,
+      "grade": "med2",
+      "out_degree": 0,
+      "in_degree": 1,
+      "weighted_out_degree": 0.0,
+      "leader_score": 0
+    },
+    {
+      "node": "M105_low2",
+      "market_id": 105,
+      "grade": "low2",
+      "out_degree": 0,
+      "in_degree": 2,
+      "weighted_out_degree": 0.0,
+      "leader_score": 0
+    },
+    {
+      "node": "M103_low2",
+      "market_id": 103,
+      "grade": "low2",
+      "out_degree": 0,
+      "in_degree": 7,
+      "weighted_out_degree": 0.0,
+      "leader_score": 0
+    }
+  ],
   "visualizations": {
+    "integrated": "/home/runner/work/RiceEWS/RiceEWS/data/processed/module_03/network_graph_integrated.html",
     "low1": "/home/runner/work/RiceEWS/RiceEWS/data/processed/module_03/network_graph_low1.html",
     "low2": "/home/runner/work/RiceEWS/RiceEWS/data/processed/module_03/network_graph_low2.html",
     "med1": "/home/runner/work/RiceEWS/RiceEWS/data/processed/module_03/network_graph_med1.html",
     "med2": "/home/runner/work/RiceEWS/RiceEWS/data/processed/module_03/network_graph_med2.html"
-  }
+  },
+  "enforce_dag": true,
+  "dag_enforcement_applied": false
 }
