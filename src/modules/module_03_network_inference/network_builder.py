@@ -1,28 +1,9 @@
 """
-MODUL 3 - Network Inference
-===========================
+MODUL 3 - Integrated Network Inference
+======================================
 
-Membangun struktur jaringan dari output Granger (MODUL 2), mengecek properti
-DAG/polytree, dan menghasilkan ringkasan kandidat market leader berbasis
-metrik graph-level sederhana.
-
-Proses utama:
-1. Baca granger_results.json dari MODUL 2.
-2. Ekstrak significant edges (Granger-causes=True) per grade.
-3. Terapkan cycle-breaking greedy (hapus edge ber-F-statistic terkecil dalam
-   setiap siklus) hingga graf menjadi DAG.
-4. Validasi properti DAG dan polytree.
-5. Hitung metrik market leader (out-degree, in-degree, weighted out-degree).
-6. Simpan output: network_edges.csv, market_leaders_{grade}.csv,
-   network_inference_results.json, network_summary.{csv,md},
-   network_graph_{grade}.html.
-
-Catatan penggunaan:
-- DAG enforcement (cycle-breaking) diaktifkan secara default
-  (enforce_dag=True). Ini penting agar metrik centrality tidak bias akibat
-  hubungan sirkular (A→B dan B→A secara bersamaan).
-- Edges yang dihapus dilaporkan di kolom ``removed_edges`` pada output JSON
-  per grade untuk transparansi/audit.
+Recover one integrated direct-cause graph over nodes ``(market_id, grade)``
+using Algorithm 1 from Kinnear & Mazumdar (2023).
 """
 
 from __future__ import annotations
@@ -39,8 +20,19 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 
 
+def _parse_granger_flag(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "false"}:
+            return normalized == "true"
+    raise ValueError(f"Invalid granger_causes value: {value!r}")
+
+
 def _load_granger_json(granger_json_path: Path) -> Dict:
-    """Load dan validasi granger_results.json dari MODUL 2."""
     if not granger_json_path.exists():
         raise FileNotFoundError(f"File granger_results.json tidak ditemukan: {granger_json_path}")
     with granger_json_path.open("r", encoding="utf-8") as f:
@@ -50,166 +42,85 @@ def _load_granger_json(granger_json_path: Path) -> Dict:
     return data
 
 
-def _extract_edges_for_grade(grade_data: Dict, grade: str) -> pd.DataFrame:
-    """
-    Ekstrak significant causal edges dari pairwise Granger results untuk satu grade.
-
-    Parameters
-    ----------
-    grade_data : dict
-        Entry per grade dari granger_results.json.
-    grade : str
-        Nama grade (misal 'low1').
-
-    Returns
-    -------
-    pd.DataFrame
-        Kolom: grade, source, target, f_statistic, p_value, weight.
-        Hanya berisi pasangan yang ``granger_causes=True``.
-    """
-    pairwise = grade_data.get("pairwise_tests", {})
-    rows: List[Dict] = []
-
-    for relation, result in pairwise.items():
-        # Expected format: "M102→M101" atau "M102->M101"
-        rel = str(relation).replace("->", "→")
-        if "→" in rel:
-            source, target = rel.split("→", 1)
-        else:
-            # Fallback: pisahkan berdasarkan underscore
-            parts = rel.replace(" ", "").split("_")
-            if len(parts) >= 2:
-                source, target = parts[0], parts[1]
-            else:
-                logger.warning("Tidak dapat mem-parsing relasi: %s", relation)
-                continue
-
-        granger_causes = bool(result.get("granger_causes", False))
-        f_stat = float(result.get("f_statistic", 0.0) or 0.0)
-        p_val = float(result.get("p_value", 1.0) or 1.0)
-
-        if granger_causes:
-            rows.append(
-                {
-                    "grade": grade,
-                    "source": source,
-                    "target": target,
-                    "f_statistic": f_stat,
-                    "p_value": p_val,
-                    "weight": f_stat,
-                }
-            )
-
-    return pd.DataFrame(rows)
-
-
-# ---------------------------------------------------------------------------
-# Algorithm 1 — Pairwise Recovery (Kinnear & Mazumdar 2023)
-# ---------------------------------------------------------------------------
-
 def _parse_relation(relation: str) -> Optional[Tuple[str, str]]:
-    """Parse 'M102→M101' or 'M102->M101' into (source, target)."""
     rel = str(relation).replace("->", "→")
-    if "→" in rel:
-        source, target = rel.split("→", 1)
-        return source.strip(), target.strip()
-    parts = rel.replace(" ", "").split("_")
-    if len(parts) >= 2:
-        return parts[0], parts[1]
-    return None
+    if "→" not in rel:
+        return None
+    source, target = rel.split("→", 1)
+    return source.strip(), target.strip()
+
+
+def _split_node_id(node_id: str) -> Tuple[int, str]:
+    if not str(node_id).startswith("M") or "_" not in str(node_id):
+        raise ValueError(f"Invalid node identifier: {node_id}")
+    market_part, grade = str(node_id)[1:].split("_", 1)
+    return int(market_part), grade
+
+
+def _build_metadata_lookup(pairwise_tests: Dict) -> Dict[Tuple[str, str], Dict]:
+    metadata: Dict[Tuple[str, str], Dict] = {}
+    for relation, result in pairwise_tests.items():
+        parsed = _parse_relation(relation)
+        if parsed is None:
+            continue
+        source_node, target_node = parsed
+        source_market, source_grade = _split_node_id(source_node)
+        target_market, target_grade = _split_node_id(target_node)
+        metadata[(source_node, target_node)] = {
+            "source_node": source_node,
+            "target_node": target_node,
+            "source": source_market,
+            "target": target_market,
+            "grade_source": source_grade,
+            "grade_target": target_grade,
+            "lag": result.get("lag_order"),
+            "p_value": result.get("p_value"),
+            "adjusted_p_value": result.get("p_value_bh"),
+            "test_statistic": result.get("f_statistic"),
+            "f_statistic": result.get("f_statistic"),
+            "relationship_type": (
+                "within_grade" if source_grade == target_grade else "cross_grade"
+            ),
+            "direction": "source_to_target",
+            "granger_causes": _parse_granger_flag(result.get("granger_causes", False)),
+        }
+    return metadata
 
 
 def _build_ancestor_set_W(
     pairwise_tests: Dict,
-) -> Tuple[set, set, Dict[Tuple[str, str], float]]:
-    """
-    Build the ancestor set W and collect F-statistics from pairwise test results.
+) -> Tuple[set[Tuple[str, str]], set[frozenset], Dict[Tuple[str, str], Dict]]:
+    metadata_lookup = _build_metadata_lookup(pairwise_tests)
+    all_causes = {
+        edge: metadata
+        for edge, metadata in metadata_lookup.items()
+        if metadata["granger_causes"]
+    }
 
-    **Step 1 of Algorithm 1** (Kinnear & Mazumdar 2023):
+    excluded_bidirectional: set[frozenset] = set()
+    to_exclude: set[Tuple[str, str]] = set()
+    for source_node, target_node in list(all_causes.keys()):
+        if (target_node, source_node) in all_causes:
+            to_exclude.add((source_node, target_node))
+            to_exclude.add((target_node, source_node))
+            excluded_bidirectional.add(frozenset({source_node, target_node}))
 
-    - W = set of directed pairs (i, j) for which i pairwise Granger-causes j
-      and j does *not* simultaneously pairwise Granger-cause i.
-    - Bidirectional pairs (i→j AND j→i both significant) are excluded from W
-      as *both* directions must be discarded (Corollary 2.3 / Remark 2.5):
-      in a strongly causal graph, bidirectional pairwise causality is always
-      caused by a confounder, making both edges invalid direct-cause edges.
-
-    Parameters
-    ----------
-    pairwise_tests : dict
-        Output of ``test_all_pairwise_relationships`` (keys: "M{x}→M{y}").
-
-    Returns
-    -------
-    W : set of (source, target)
-        Unambiguous ancestor relations (bidirectional pairs excluded).
-    excluded_bidirectional : set of frozenset({src, tgt})
-        Unordered pairs excluded because both directions were significant.
-    f_stats : dict mapping (source, target) → F-statistic
-        For edge weight in output DataFrame.
-    """
-    all_causes: Dict[Tuple[str, str], float] = {}
-
-    for relation, result in pairwise_tests.items():
-        if not result.get("granger_causes", False):
-            continue
-        parsed = _parse_relation(relation)
-        if parsed is None:
-            logger.warning("Tidak dapat mem-parsing relasi: %s", relation)
-            continue
-        source, target = parsed
-        f_stat = float(result.get("f_statistic", 0.0) or 0.0)
-        all_causes[(source, target)] = f_stat
-
-    # Identify bidirectional pairs (both i→j and j→i significant) → exclude both
-    to_exclude: set = set()
-    excluded_bidirectional: set = set()
-    for (src, tgt) in list(all_causes.keys()):
-        if (tgt, src) in all_causes:
-            to_exclude.add((src, tgt))
-            to_exclude.add((tgt, src))
-            excluded_bidirectional.add(frozenset({src, tgt}))
-
-    W: set = {pair for pair in all_causes if pair not in to_exclude}
-    f_stats: Dict[Tuple[str, str], float] = {k: v for k, v in all_causes.items() if k in W}
-
-    return W, excluded_bidirectional, f_stats
+    W = {edge for edge in all_causes if edge not in to_exclude}
+    W_metadata = {edge: all_causes[edge] for edge in W}
+    return W, excluded_bidirectional, W_metadata
 
 
-def _compute_level_partition(
-    W: set[Tuple[str, str]],
-) -> Dict[str, int]:
-    """
-    Assign each node in W a level equal to the length of its longest path from
-    any root in W.
-
-    Partition: P_k = {nodes at level k}.
-    - P_0 = nodes with no predecessors in W (in-degree 0).
-    - P_k = nodes whose longest-path distance from any root is k.
-
-    This stratification is used by Algorithm 1's outer loop.
-
-    Returns
-    -------
-    dict mapping node → level index
-    """
-    nodes: set = set()
-    for src, tgt in W:
-        nodes.add(src)
-        nodes.add(tgt)
-
+def _compute_level_partition(W: set[Tuple[str, str]], nodes: List[str]) -> Dict[str, int]:
     if not nodes:
         return {}
 
-    # Build adjacency and in-degree
-    adj: Dict[str, List[str]] = {n: [] for n in nodes}
-    in_deg: Dict[str, int] = {n: 0 for n in nodes}
-    for src, tgt in W:
-        adj[src].append(tgt)
-        in_deg[tgt] += 1
+    adj: Dict[str, List[str]] = {node: [] for node in nodes}
+    in_deg: Dict[str, int] = {node: 0 for node in nodes}
+    for source_node, target_node in W:
+        adj[source_node].append(target_node)
+        in_deg[target_node] += 1
 
-    # Topological sort (Kahn's algorithm)
-    queue: List[str] = [n for n in nodes if in_deg[n] == 0]
+    queue = [node for node in nodes if in_deg[node] == 0]
     topo_order: List[str] = []
     in_deg_copy = in_deg.copy()
     while queue:
@@ -221,418 +132,185 @@ def _compute_level_partition(
                 queue.append(successor)
 
     if len(topo_order) != len(nodes):
-        # W can still contain a cycle even after bidirectional-pair removal: only
-        # 2-cycles (A⇄B) are excluded by Corollary 2.3; longer cycles (A→B→C→A)
-        # are theoretically incompatible with an SCG but may still appear in
-        # noisy test results.  Fall back: assign level 0 to all nodes.
-        logger.warning(
-            "W contains a cycle after bidirectional-pair removal.  "
-            "Level partition falls back to level 0 for all nodes."
-        )
-        return {n: 0 for n in nodes}
+        raise ValueError("Integrated ancestor set W contains a directed cycle.")
 
-    # Longest-path DP (forward pass over topological order)
-    levels: Dict[str, int] = {n: 0 for n in nodes}
+    levels = {node: 0 for node in nodes}
     for node in topo_order:
         for successor in adj[node]:
             if levels[successor] < levels[node] + 1:
                 levels[successor] = levels[node] + 1
-
     return levels
 
 
-def _can_reach_via_E(source: str, target: str, E: set[Tuple[str, str]]) -> bool:
-    """
-    Check whether ``target`` is reachable from ``source`` through the edges
-    already in E (the partial edge set being built by Algorithm 1).
+def _can_reach_via_E(source_node: str, target_node: str, E: set[Tuple[str, str]]) -> bool:
+    adjacency: Dict[str, List[str]] = {}
+    for source, target in E:
+        adjacency.setdefault(source, []).append(target)
 
-    Used to decide whether to add edge (source, target): if target is already
-    reachable from source via E, then (source, target) is a *transitive* edge
-    and should NOT be added to E.
-    """
-    adj: Dict[str, List[str]] = {}
-    for s, t in E:
-        adj.setdefault(s, []).append(t)
-
-    visited: set = set()
-    stack: List[str] = [source]
-
+    visited: set[str] = set()
+    stack: List[str] = [source_node]
     while stack:
         node = stack.pop()
-        if node == target:
+        if node == target_node:
             return True
         if node in visited:
             continue
         visited.add(node)
-        stack.extend(adj.get(node, []))
-
+        stack.extend(adjacency.get(node, []))
     return False
 
 
 def _pairwise_recovery_algorithm1(
     W: set[Tuple[str, str]],
-    f_stats: Dict[Tuple[str, str], float],
-    grade: str,
+    nodes: List[str],
 ) -> Tuple[List[Tuple[str, str]], Dict[str, int]]:
-    """
-    **Algorithm 1** from Kinnear & Mazumdar (2023) — Pairwise Granger
-    Causality Recovery via transitive reduction.
-
-    Given the ancestor set W (bidirectional pairs already excluded), recovers
-    the *direct* edge set E by iterating over the level partition P_0, P_1, …
-    and adding edge (i, j) only when j is not already reachable from i through
-    previously added edges (i.e., no transitive shortcut exists).
-
-    This eliminates false positive edges in W that arise from transitivity.
-    For example, if 1→3 and 3→4 are direct edges, then 1→4 appears in W as an
-    ancestor relation but is *not* a direct edge and is excluded from E
-    (see Example 2.4 in the paper).
-
-    Parameters
-    ----------
-    W : set of (source, target)
-        Ancestor relations (output of ``_build_ancestor_set_W``).
-    f_stats : dict mapping (source, target) → F-statistic
-        Used to preserve weight information in output.
-    grade : str
-        Grade label for logging.
-
-    Returns
-    -------
-    E_list : list of (source, target)
-        Direct edges recovered by Algorithm 1.
-    levels : dict mapping node → level
-        Level partition for logging / diagnostics.
-    """
     if not W:
-        return [], {}
+        return [], {node: 0 for node in nodes}
 
-    levels = _compute_level_partition(W)
-    if not levels:
-        return [], {}
+    levels = _compute_level_partition(W, nodes)
+    max_level = max(levels.values()) if levels else 0
+    partitions: Dict[int, List[str]] = {}
+    for node, level in levels.items():
+        partitions.setdefault(level, []).append(node)
 
-    max_level = max(levels.values())
-
-    # Group nodes by level
-    P: Dict[int, List[str]] = {}
-    for node, lev in levels.items():
-        P.setdefault(lev, []).append(node)
-
-    W_set: set = set(W)
-    E: set = set()
-
-    # Outer loop: for each level k ≥ 1 (target nodes j ∈ P_k)
+    E: set[Tuple[str, str]] = set()
     for k in range(1, max_level + 1):
-        if k not in P:
-            continue
-        targets_at_k = P[k]
-
-        for j in targets_at_k:
-            # Inner loop: r = 1, 2, …, k  (source levels k−r, from closest to farthest)
+        for target_node in partitions.get(k, []):
             for r in range(1, k + 1):
                 source_level = k - r
-                if source_level not in P:
-                    continue
-                for i in P[source_level]:
-                    if (i, j) not in W_set:
+                for source_node in partitions.get(source_level, []):
+                    if (source_node, target_node) not in W:
                         continue
-                    # Add (i, j) only if j is NOT already reachable from i via E.
-                    # If it is reachable, (i, j) is a transitive consequence of
-                    # already-discovered shorter paths and should be skipped.
-                    if _can_reach_via_E(i, j, E):
-                        logger.debug(
-                            "Grade=%s: transitive edge (%s→%s) excluded from E.",
-                            grade, i, j,
-                        )
+                    if _can_reach_via_E(source_node, target_node, E):
                         continue
-                    E.add((i, j))
+                    E.add((source_node, target_node))
 
-    E_list = list(E)
-    logger.info(
-        "Grade=%s: Algorithm 1 recovered %d direct edges from %d ancestor relations in W.",
-        grade, len(E_list), len(W),
+    return sorted(E), levels
+
+
+def _prune_cyclic_ancestor_relations(
+    W: set[Tuple[str, str]],
+) -> Tuple[set[Tuple[str, str]], List[Tuple[str, str]]]:
+    """Drop ancestor relations that remain inside directed cycles."""
+
+    if not W:
+        return W, []
+
+    graph = nx.DiGraph()
+    graph.add_edges_from(W)
+    removed_edges: List[Tuple[str, str]] = []
+
+    for component in nx.strongly_connected_components(graph):
+        if len(component) <= 1:
+            continue
+        component_nodes = set(component)
+        for edge in list(W):
+            if edge[0] in component_nodes and edge[1] in component_nodes:
+                removed_edges.append(edge)
+
+    if not removed_edges:
+        return W, []
+
+    pruned_W = {edge for edge in W if edge not in set(removed_edges)}
+    logger.warning(
+        "Dropped %d cyclic ancestor relation(s) before Algorithm 1 because they violate the ancestor partial-order assumption.",
+        len(removed_edges),
     )
-    return E_list, levels
+    return pruned_W, sorted(removed_edges)
 
 
 def _edges_to_dataframe(
     edges: List[Tuple[str, str]],
-    f_stats: Dict[Tuple[str, str], float],
-    grade: str,
+    metadata_lookup: Dict[Tuple[str, str], Dict],
 ) -> pd.DataFrame:
-    """Convert edge list to DataFrame compatible with downstream functions."""
     rows = []
-    for src, tgt in edges:
-        f_stat = f_stats.get((src, tgt), 0.0)
-        rows.append({
-            "grade": grade,
-            "source": src,
-            "target": tgt,
-            "f_statistic": f_stat,
-            "p_value": None,  # p-value is available via pairwise_tests if needed
-            "weight": f_stat,
-        })
+    for edge in edges:
+        metadata = metadata_lookup[edge].copy()
+        rows.append(metadata)
+
     if not rows:
-        return pd.DataFrame(columns=["grade", "source", "target", "f_statistic", "p_value", "weight"])
+        return pd.DataFrame(
+            columns=[
+                "source",
+                "target",
+                "grade_source",
+                "grade_target",
+                "source_node",
+                "target_node",
+                "lag",
+                "p_value",
+                "adjusted_p_value",
+                "test_statistic",
+                "f_statistic",
+                "relationship_type",
+                "direction",
+            ]
+        )
+
     return pd.DataFrame(rows)
 
 
 def _detect_cycle(nodes: List[str], edges: List[Tuple[str, str]]) -> bool:
-    """Periksa apakah terdapat siklus pada directed graph menggunakan DFS."""
-    graph: Dict[str, List[str]] = {n: [] for n in nodes}
-    for s, t in edges:
-        graph.setdefault(s, []).append(t)
-
-    visited: set = set()
-    visiting: set = set()
-
-    def dfs(node: str) -> bool:
-        if node in visiting:
-            return True
-        if node in visited:
-            return False
-        visiting.add(node)
-        for nei in graph.get(node, []):
-            if dfs(nei):
-                return True
-        visiting.remove(node)
-        visited.add(node)
-        return False
-
-    for n in nodes:
-        if n not in visited and dfs(n):
-            return True
-    return False
-
-
-def _find_one_cycle(nodes: List[str], edges: List[Tuple[str, str]]) -> Optional[List[str]]:
-    """
-    Temukan satu siklus dalam directed graph menggunakan DFS.
-
-    Returns
-    -------
-    list of str atau None
-        Urutan node yang membentuk siklus, atau None jika tidak ada siklus.
-    """
-    graph: Dict[str, List[str]] = {n: [] for n in nodes}
-    for s, t in edges:
-        graph.setdefault(s, []).append(t)
-
-    visited: set = set()
-    visiting: List[str] = []
-    visiting_set: set = set()
-
-    def dfs(node: str) -> Optional[List[str]]:
-        if node in visiting_set:
-            # Siklus ditemukan: ambil bagian yang membentuk siklus
-            idx = visiting.index(node)
-            return visiting[idx:]
-        if node in visited:
-            return None
-        visiting.append(node)
-        visiting_set.add(node)
-        for nei in graph.get(node, []):
-            result = dfs(nei)
-            if result is not None:
-                return result
-        visiting.pop()
-        visiting_set.discard(node)
-        visited.add(node)
-        return None
-
-    for n in nodes:
-        if n not in visited:
-            result = dfs(n)
-            if result is not None:
-                return result
-    return None
-
-
-def _break_cycles_greedy(edge_df: pd.DataFrame) -> Tuple[pd.DataFrame, List[Tuple[str, str]]]:
-    """
-    Hapus edge ber-F-statistic (weight) terkecil dari setiap siklus secara
-    iteratif hingga graf menjadi DAG (Directed Acyclic Graph).
-
-    .. note:: **RiceEWS heuristic — not part of Kinnear & Mazumdar (2023).**
-        The Pairwise Recovery Algorithm 1 in the paper assumes the causal graph
-        is already a strongly causal DAG structurally.  It does not include any
-        cycle-breaking step.  This function is an *additional* engineering
-        safeguard applied when the raw pairwise test results still contain
-        directed cycles after bidirectional-pair removal and transitive
-        reduction.  It is retained for robustness but should be understood as
-        outside the theoretical guarantees of the paper.
-
-    Strategi greedy ini meminimalkan kehilangan informasi kausalitas dengan
-    mempertahankan hubungan yang paling kuat (F-statistic terbesar) dan
-    membuang yang paling lemah jika terjadi kontradiksi arah.
-
-    Parameters
-    ----------
-    edge_df : pd.DataFrame
-        DataFrame dengan kolom: source, target, weight (dan lainnya).
-
-    Returns
-    -------
-    (dag_df, removed_edges)
-        dag_df : pd.DataFrame — edges yang tersisa setelah cycle-breaking.
-        removed_edges : list of (source, target) — edges yang dihapus.
-    """
-    if edge_df.empty:
-        return edge_df.copy(), []
-
-    df = edge_df.copy().reset_index(drop=True)
-    removed_edges: List[Tuple[str, str]] = []
-    max_iterations = len(df) + 1  # batas aman untuk mencegah infinite loop
-
-    for _ in range(max_iterations):
-        nodes = sorted(set(df["source"].tolist() + df["target"].tolist()))
-        edge_pairs = list(zip(df["source"].astype(str), df["target"].astype(str)))
-
-        if not _detect_cycle(nodes, edge_pairs):
-            break  # Sudah DAG
-
-        cycle = _find_one_cycle(nodes, edge_pairs)
-        if cycle is None:
-            break  # Tidak ada siklus yang dapat ditemukan
-
-        # Identifikasi edges dalam siklus ini
-        cycle_edge_set = set(
-            (cycle[i], cycle[(i + 1) % len(cycle)]) for i in range(len(cycle))
-        )
-
-        # Cari edge dalam siklus dengan weight (F-statistic) terkecil
-        min_weight = float("inf")
-        min_idx: Optional[int] = None
-
-        for idx, row in df.iterrows():
-            src = str(row["source"])
-            tgt = str(row["target"])
-            if (src, tgt) in cycle_edge_set:
-                w = float(row.get("weight", row.get("f_statistic", 0.0)) or 0.0)
-                if w < min_weight:
-                    min_weight = w
-                    min_idx = idx
-
-        if min_idx is not None:
-            removed_row = df.loc[min_idx]
-            removed_edges.append((str(removed_row["source"]), str(removed_row["target"])))
-            df = df.drop(index=min_idx).reset_index(drop=True)
-        else:
-            # Cycle found but no edge available to remove — this is a logic error.
-            raise RuntimeError(
-                "Cycle-breaking: cycle detected but no edge found to remove. "
-                "This indicates a bug in the cycle-detection or edge-lookup logic."
-            )
-
-    return df, removed_edges
+    graph = nx.DiGraph()
+    graph.add_nodes_from(nodes)
+    graph.add_edges_from(edges)
+    return not nx.is_directed_acyclic_graph(graph)
 
 
 def _is_polytree(nodes: List[str], edges: List[Tuple[str, str]]) -> bool:
-    """
-    Check whether the graph is a **strongly causal graph (polytree)** as defined in
-    Kinnear & Mazumdar (2023), Definition 2.9:
-
-        A DAG G is *strongly causal* if its underlying undirected skeleton (the
-        same graph ignoring edge direction) is a **forest** — i.e., there is at
-        most one undirected path between any pair of nodes.
-
-    This is *not* equivalent to "every node has at most one parent".  A diamond
-    / v-structure (e.g. i→j←k) is a valid strongly causal graph because its
-    undirected skeleton i–j–k has no cycle, even though j has two parents.
-    See Kinnear & Mazumdar (2023) Section 2.5 and Figure 1(a) for explicit
-    examples of multi-parent nodes in valid strongly causal graphs.
-    """
-    if _detect_cycle(nodes, edges):
-        return False
-    if not edges:
-        return True
-    G = nx.DiGraph()
-    G.add_nodes_from(nodes)
-    G.add_edges_from(edges)
-    return nx.is_forest(G.to_undirected())
+    graph = nx.DiGraph()
+    graph.add_nodes_from(nodes)
+    graph.add_edges_from(edges)
+    return nx.is_directed_acyclic_graph(graph) and nx.is_forest(graph.to_undirected())
 
 
-def _build_node_metrics(nodes: List[str], edges: pd.DataFrame) -> pd.DataFrame:
-    if edges.empty:
-        return pd.DataFrame(
-            {
-                "node": nodes,
-                "out_degree": [0] * len(nodes),
-                "in_degree": [0] * len(nodes),
-                "weighted_out_degree": [0.0] * len(nodes),
-                "leader_score": [0.0] * len(nodes),
-            }
-        )
-
-    out_degree = edges.groupby("source").size().to_dict()
-    in_degree = edges.groupby("target").size().to_dict()
-    weighted_out = edges.groupby("source")["weight"].sum().to_dict()
+def _build_node_metrics(nodes: List[str], edge_df: pd.DataFrame) -> pd.DataFrame:
+    out_degree = edge_df.groupby("source_node").size().to_dict() if not edge_df.empty else {}
+    in_degree = edge_df.groupby("target_node").size().to_dict() if not edge_df.empty else {}
+    weighted_out = edge_df.groupby("source_node")["test_statistic"].sum().to_dict() if not edge_df.empty else {}
 
     rows = []
-    for n in nodes:
-        od = int(out_degree.get(n, 0))
-        idg = int(in_degree.get(n, 0))
-        wod = float(weighted_out.get(n, 0.0))
-        # Leader score sederhana: weighted_out + out_degree - in_degree
-        leader_score = wod + od - idg
+    for node in nodes:
+        market_id, grade = _split_node_id(node)
+        od = int(out_degree.get(node, 0))
+        idg = int(in_degree.get(node, 0))
+        wod = float(weighted_out.get(node, 0.0))
         rows.append(
             {
-                "node": n,
+                "node": node,
+                "market_id": market_id,
+                "grade": grade,
                 "out_degree": od,
                 "in_degree": idg,
                 "weighted_out_degree": wod,
-                "leader_score": leader_score,
+                "leader_score": od,
             }
         )
 
-    df = pd.DataFrame(rows).sort_values("leader_score", ascending=False).reset_index(drop=True)
-    return df
+    return (
+        pd.DataFrame(rows)
+        .sort_values(
+            ["leader_score", "weighted_out_degree", "in_degree", "node"],
+            ascending=[False, False, True, True],
+        )
+        .reset_index(drop=True)
+    )
 
 
-def _save_html_visualization(grade: str, nodes: List[str], edge_df: pd.DataFrame, out_dir: Path) -> Path:
-    html_path = out_dir / f"network_graph_{grade}.html"
-
-    node_count = len(nodes)
-
-    # Safety: restrict edge_df to edges whose endpoints are both in the provided nodes list.
-    # This prevents any shared/global DataFrame from bleeding across grades.
-    if not edge_df.empty:
-        node_set = set(nodes)
-        edge_df = edge_df[
-            edge_df["source"].isin(node_set) & edge_df["target"].isin(node_set)
-        ].copy()
-
-    edge_count = len(edge_df)
-    title = f"Module 3 Network Graph - {grade} | Nodes={node_count} | Edges={edge_count}"
-    debug_text = f"Debug Metadata | grade={grade} | node_count={node_count} | edge_count={edge_count}"
+def _save_html_visualization(name: str, nodes: List[str], edge_df: pd.DataFrame, out_dir: Path) -> Path:
+    html_path = out_dir / f"{name}.html"
 
     try:
         import plotly.graph_objects as go
 
-        debug_annotation = dict(
-            text=debug_text,
-            xref="paper",
-            yref="paper",
-            x=0.5,
-            y=-0.05,
-            showarrow=False,
-            font=dict(size=10, color="#666"),
-            align="center",
-        )
-
         if not nodes:
             fig = go.Figure()
-            fig.update_layout(
-                title=title,
-                template="plotly_white",
-                annotations=[debug_annotation],
-            )
+            fig.update_layout(title=name.replace("_", " ").title(), template="plotly_white")
             fig.write_html(str(html_path), include_plotlyjs="cdn")
             return html_path
 
-        n = len(nodes)
-        angles = np.linspace(0, 2 * np.pi, n, endpoint=False)
-        pos = {
+        angles = np.linspace(0, 2 * np.pi, len(nodes), endpoint=False)
+        positions = {
             node: (float(np.cos(angles[i])), float(np.sin(angles[i])))
             for i, node in enumerate(nodes)
         }
@@ -640,99 +318,40 @@ def _save_html_visualization(grade: str, nodes: List[str], edge_df: pd.DataFrame
         edge_x: List[float] = []
         edge_y: List[float] = []
         for _, row in edge_df.iterrows():
-            x0, y0 = pos[row["source"]]
-            x1, y1 = pos[row["target"]]
+            x0, y0 = positions[row["source_node"]]
+            x1, y1 = positions[row["target_node"]]
             edge_x += [x0, x1, None]
             edge_y += [y0, y1, None]
 
-        edge_trace = go.Scatter(
-            x=edge_x,
-            y=edge_y,
-            line=dict(width=1, color="#888"),
-            hoverinfo="none",
-            mode="lines",
-            name="edges",
-        )
-
-        node_x = [pos[node][0] for node in nodes]
-        node_y = [pos[node][1] for node in nodes]
-
-        out_degree = edge_df.groupby("source").size().to_dict() if not edge_df.empty else {}
-        in_degree = edge_df.groupby("target").size().to_dict() if not edge_df.empty else {}
-        labels = [
-            f"{node}<br>Out-degree: {int(out_degree.get(node, 0))}<br>In-degree: {int(in_degree.get(node, 0))}"
-            for node in nodes
-        ]
-
+        edge_trace = go.Scatter(x=edge_x, y=edge_y, mode="lines", line=dict(width=1, color="#888"))
         node_trace = go.Scatter(
-            x=node_x,
-            y=node_y,
+            x=[positions[node][0] for node in nodes],
+            y=[positions[node][1] for node in nodes],
             mode="markers+text",
             text=nodes,
             textposition="top center",
-            hovertext=labels,
+            marker=dict(size=18, color="#1f77b4"),
+            hovertext=nodes,
             hoverinfo="text",
-            marker=dict(size=20, color="#1f77b4", line=dict(width=1, color="#0d3b66")),
-            name="markets",
         )
-
         fig = go.Figure(data=[edge_trace, node_trace])
         fig.update_layout(
-            title=title,
+            title=name.replace("_", " ").title(),
             showlegend=False,
             template="plotly_white",
             xaxis=dict(showgrid=False, zeroline=False, visible=False),
             yaxis=dict(showgrid=False, zeroline=False, visible=False),
-            annotations=[debug_annotation],
         )
         fig.write_html(str(html_path), include_plotlyjs="cdn")
         return html_path
-
     except Exception:
-        # Fallback minimal HTML, tetap memenuhi syarat minimal satu output visualisasi
-        nodes_html = "".join([f"<li>{node}</li>" for node in nodes]) or "<li>(no nodes)</li>"
-        edges_html = ""
-        if edge_df.empty:
-            edges_html = "<li>(no significant edges)</li>"
-        else:
-            edges_html = "".join(
-                [
-                    f"<li>{row['source']} → {row['target']} (F={row['f_statistic']:.4f}, p={row['p_value']:.4f})</li>"
-                    for _, row in edge_df.iterrows()
-                ]
-            )
-
+        edge_lines = "".join(
+            f"<li>{row['source_node']} → {row['target_node']}</li>"
+            for _, row in edge_df.iterrows()
+        ) or "<li>(no edges)</li>"
         html = f"""<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>{title}</title>
-  <style>
-    body {{ font-family: Arial, sans-serif; margin: 24px; }}
-    h1 {{ margin-bottom: 8px; }}
-    .muted {{ color: #666; }}
-    .debug-meta {{ background: #f5f5f5; border: 1px solid #ddd; padding: 12px; margin-bottom: 16px; font-size: 13px; }}
-  </style>
-</head>
-<body>
-  <h1>{title}</h1>
-  <p class="muted">Fallback HTML visualization summary (plotly unavailable).</p>
-
-  <div class="debug-meta">
-    <strong>Debug Metadata</strong><br/>
-    grade: {grade}<br/>
-    node_count: {node_count}<br/>
-    edge_count: {edge_count}
-  </div>
-
-  <h2>Nodes</h2>
-  <ul>{nodes_html}</ul>
-
-  <h2>Significant Directed Edges</h2>
-  <ul>{edges_html}</ul>
-</body>
-</html>
-"""
+<html lang="en"><head><meta charset="utf-8"><title>{name}</title></head>
+<body><h1>{name}</h1><p>Nodes: {len(nodes)}</p><ul>{edge_lines}</ul></body></html>"""
         html_path.write_text(html, encoding="utf-8")
         return html_path
 
@@ -743,198 +362,99 @@ def run_module3_network_inference(
     enforce_dag: bool = True,
 ) -> Dict:
     """
-    Jalankan MODUL 3 dari output MODUL 2 menggunakan **Algorithm 1**
-    (Pairwise Recovery) dari Kinnear & Mazumdar (2023).
+    Recover one integrated graph using Algorithm 1 only.
 
-    Proses (sesuai paper):
-    1. Baca granger_results.json dari MODUL 2.
-    2. **Bangun ancestor set W** dari hasil pairwise Granger.
-       - Pasangan bidireksional (i→j DAN j→i) dibuang **keduanya** sebagai
-         konfounding (Corollary 2.3 / Remark 2.5). [Fix #8]
-    3. **Terapkan Algorithm 1** (transitive reduction via level partition).
-       Ini mengeliminasi edge transitif palsu yang muncul di W (misal
-       1→4 yang muncul karena jalur 1→3→4, bukan karena 1 langsung
-       mempengaruhi 4).  [Fix #6]
-    4. Jika (enforce_dag=True) dan output Algorithm 1 masih mengandung siklus
-       (tidak seharusnya untuk SCG), terapkan cycle-breaking greedy sebagai
-       safeguard tambahan. **Ini adalah RiceEWS heuristic, bukan bagian paper.**
-       [Fix #7]
-    5. Hitung metrik market leader dari graf E yang sudah diproses.
-    6. Simpan semua output.
-
-    Parameters
-    ----------
-    granger_json_path : str
-        Path ke ``granger_results.json`` dari MODUL 2.
-    output_dir : str
-        Folder output MODUL 3, contoh: ``data/processed/module_03``.
-    enforce_dag : bool, default True
-        Jika True, terapkan cycle-breaking greedy sebagai safeguard jika
-        Algorithm 1 menghasilkan siklus (seharusnya tidak terjadi untuk SCG
-        yang valid, tapi berguna untuk data nyata yang tidak memenuhi asumsi
-        sepenuhnya).  Edges yang dihapus dicatat untuk audit.
-
-    Returns
-    -------
-    dict
-        Hasil inference lengkap per grade, termasuk path output.
-
-    Notes
-    -----
-    **Methodology assumptions (Kinnear & Mazumdar 2023, Section 2):**
-
-    - The exact recovery guarantee (Theorem 2.2) requires the true causal
-      graph to be a *strongly causal* DAG (Definition 2.9) — i.e., a DAG
-      whose undirected skeleton is a forest.
-    - Assumption 2.1 must hold: the noise covariance matrix Σ_v is diagonal
-      (no instantaneous causality).
-    - The Assumption 2.1 (no-cancellation) and Definition 2.11 (persistence)
-      are also required for the exact guarantee.
-
-    For real-world rice market data these assumptions may hold approximately
-    rather than exactly.  Results should be interpreted as *heuristic*
-    estimates of the causal structure, not as guaranteed exact recovery.
+    ``enforce_dag`` is retained for API compatibility but no longer applies any
+    extra heuristic cycle-breaking step.
     """
+
     granger_path = Path(granger_json_path)
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     data = _load_granger_json(granger_path)
+    if data.get("analysis_type") != "integrated":
+        raise ValueError("Module 3 expects integrated Module 2 output.")
 
-    # Grades are top-level keys in granger_results.json
-    grades = list(data.keys())
+    node_records = data.get("nodes", [])
+    node_labels = [record["node_id"] for record in node_records]
+    grades = sorted({record["grade"] for record in node_records})
+    pairwise_tests = data.get("pairwise_tests", {})
 
-    all_dag_edges: List[pd.DataFrame] = []
+    W, excluded_bidirectional, metadata_lookup = _build_ancestor_set_W(pairwise_tests)
+    W, excluded_cycle_relations = _prune_cyclic_ancestor_relations(W)
+    recovered_edges, levels = _pairwise_recovery_algorithm1(W, node_labels)
+    edge_df = _edges_to_dataframe(recovered_edges, metadata_lookup)
+
+    edge_pairs = [(row["source_node"], row["target_node"]) for _, row in edge_df.iterrows()]
+    if _detect_cycle(node_labels, edge_pairs):
+        raise ValueError("Algorithm 1 recovered a cyclic integrated graph; no extra heuristic applied.")
+
+    metrics = _build_node_metrics(node_labels, edge_df)
     leaders_per_grade: Dict[str, List[Dict]] = {}
-    summary_rows: List[Dict] = []
     visualization_paths: Dict[str, str] = {}
-    removed_edges_per_grade: Dict[str, List[Tuple[str, str]]] = {}
-    excluded_bidirectional_per_grade: Dict[str, List[List[str]]] = {}
+    summary_rows: List[Dict] = []
+
+    integrated_viz = _save_html_visualization("network_graph_integrated", node_labels, edge_df, out_dir)
+    visualization_paths["integrated"] = str(integrated_viz)
 
     for grade in grades:
-        grade_data = data.get(grade, {})
-        pairwise_tests = grade_data.get("pairwise_tests", {})
+        grade_nodes = [record["node_id"] for record in node_records if record["grade"] == grade]
+        grade_metrics = metrics[metrics["grade"] == grade].reset_index(drop=True)
+        leaders_per_grade[grade] = grade_metrics.to_dict(orient="records")
+        grade_metrics.to_csv(out_dir / f"market_leaders_{grade}.csv", index=False)
 
-        # --- Step 1: Build ancestor set W, exclude bidirectional pairs [Fix #8] ---
-        W, excluded_bidir, f_stats = _build_ancestor_set_W(pairwise_tests)
-
-        if excluded_bidir:
-            excluded_list = [sorted(list(p)) for p in excluded_bidir]
-            excluded_bidirectional_per_grade[grade] = excluded_list
-            logger.info(
-                "Grade=%s: %d bidirectional pair(s) excluded (Corollary 2.3): %s",
-                grade, len(excluded_bidir), excluded_list,
-            )
-            print(
-                f"  [Algorithm 1] Grade={grade}: {len(excluded_bidir)} "
-                f"bidirectional pair(s) excluded as confounders."
-            )
-            if not W:
-                import warnings as _warnings
-                _warnings.warn(
-                    f"Grade={grade}: All significant pairwise relationships were "
-                    f"bidirectional and have been excluded (Corollary 2.3). "
-                    f"The resulting causal network is empty. This may indicate "
-                    f"strong bidirectional coupling inconsistent with SCG assumptions, "
-                    f"or an overly aggressive FDR correction threshold. "
-                    f"Consider reviewing the data or adjusting the significance level.",
-                    UserWarning,
-                    stacklevel=2,
-                )
-                logger.warning(
-                    "Grade=%s: All edges excluded — W is empty after bidirectional removal.",
-                    grade,
-                )
-        else:
-            excluded_bidirectional_per_grade[grade] = []
-
-        # --- Step 2: Algorithm 1 — transitive reduction [Fix #6] ---
-        e_edges, levels = _pairwise_recovery_algorithm1(W, f_stats, grade)
-        edge_df = _edges_to_dataframe(e_edges, f_stats, grade)
-
-        # --- Step 3 (optional): cycle-breaking safeguard [Fix #7] ---
-        # This is a RiceEWS heuristic outside the paper, applied only when
-        # Algorithm 1 still produces cycles (shouldn't happen for true SCG).
-        removed_edges_per_grade[grade] = []
-        if enforce_dag and not edge_df.empty:
-            edge_nodes = sorted(set(edge_df["source"].tolist() + edge_df["target"].tolist()))
-            edge_pairs = list(zip(edge_df["source"], edge_df["target"]))
-            if _detect_cycle(edge_nodes, edge_pairs):
-                logger.warning(
-                    "Grade=%s: Algorithm 1 output still contains cycles. "
-                    "Applying greedy cycle-breaking (RiceEWS heuristic, not from paper).",
-                    grade,
-                )
-                dag_edge_df, removed = _break_cycles_greedy(edge_df)
-                removed_edges_per_grade[grade] = removed
-                if removed:
-                    print(
-                        f"  [Cycle-breaking heuristic] Grade={grade}: {len(removed)} "
-                        f"edge(s) removed to enforce DAG (outside paper methodology)."
-                    )
-                edge_df = dag_edge_df
-
-        all_dag_edges.append(edge_df)
-
-        nodes = sorted(
-            set(edge_df["source"].tolist() + edge_df["target"].tolist())
-        ) if not edge_df.empty else []
-        edge_pairs_final = list(zip(edge_df["source"], edge_df["target"])) if not edge_df.empty else []
-
-        is_dag = not _detect_cycle(nodes, edge_pairs_final) if nodes else True
-        is_poly = _is_polytree(nodes, edge_pairs_final) if nodes else True
-
-        metrics = _build_node_metrics(nodes, edge_df)
-        top_leaders = metrics.head(5).to_dict(orient="records")
-        leaders_per_grade[grade] = top_leaders
+        grade_edge_df = edge_df[
+            (edge_df["grade_source"] == grade) | (edge_df["grade_target"] == grade)
+        ].copy()
+        grade_viz = _save_html_visualization(f"network_graph_{grade}", grade_nodes, grade_edge_df, out_dir)
+        visualization_paths[grade] = str(grade_viz)
 
         summary_rows.append(
             {
                 "grade": grade,
-                "nodes": len(nodes),
-                "edges": int(len(edge_df)),
-                "W_size": len(W),
-                "bidirectional_excluded": len(excluded_bidirectional_per_grade[grade]),
-                "transitive_removed": max(0, len(W) - len(e_edges)),
-                "edges_removed_for_dag": len(removed_edges_per_grade.get(grade, [])),
-                "is_dag": is_dag,
-                "is_polytree": is_poly,
-                "top_leader": top_leaders[0]["node"] if top_leaders else None,
-                "top_leader_score": float(top_leaders[0]["leader_score"]) if top_leaders else 0.0,
+                "nodes": len(grade_nodes),
+                "edges": int(len(grade_edge_df)),
+                "out_edges": int((edge_df["grade_source"] == grade).sum()) if not edge_df.empty else 0,
+                "in_edges": int((edge_df["grade_target"] == grade).sum()) if not edge_df.empty else 0,
+                "cross_grade_edges": int(
+                    (
+                        ((edge_df["grade_source"] == grade) | (edge_df["grade_target"] == grade))
+                        & (edge_df["grade_source"] != edge_df["grade_target"])
+                    ).sum()
+                )
+                if not edge_df.empty
+                else 0,
+                "is_dag": True,
+                "is_polytree": _is_polytree(node_labels, edge_pairs),
+                "top_leader": grade_metrics.iloc[0]["node"] if not grade_metrics.empty else None,
+                "top_leader_score": float(grade_metrics.iloc[0]["leader_score"]) if not grade_metrics.empty else 0.0,
             }
         )
 
-        metrics.to_csv(out_dir / f"market_leaders_{grade}.csv", index=False)
-        viz_path = _save_html_visualization(
-            grade=grade, nodes=nodes, edge_df=edge_df, out_dir=out_dir
-        )
-        visualization_paths[grade] = str(viz_path)
-
-    edges_df = pd.concat(all_dag_edges, ignore_index=True) if all_dag_edges else pd.DataFrame(
-        columns=["grade", "source", "target", "f_statistic", "p_value", "weight"]
-    )
-    edges_df.to_csv(out_dir / "network_edges.csv", index=False)
-
-    summary_df = pd.DataFrame(summary_rows)
-    summary_df.to_csv(out_dir / "network_summary.csv", index=False)
+    edge_df.to_csv(out_dir / "network_edges.csv", index=False)
+    pd.DataFrame(summary_rows).to_csv(out_dir / "network_summary.csv", index=False)
+    metrics.to_csv(out_dir / "market_leaders_integrated.csv", index=False)
 
     result = {
         "module": "module_03_network_inference",
         "algorithm": "Kinnear & Mazumdar (2023) Algorithm 1 — Pairwise Recovery",
         "input": str(granger_path),
         "output_dir": str(out_dir),
-        "grades": grades,
-        "enforce_dag": enforce_dag,
+        "analysis_type": "integrated",
+        "nodes": node_records,
+        "levels": levels,
+        "ancestor_relations": len(W),
+        "recovered_edges": len(recovered_edges),
+        "excluded_bidirectional_pairs": [sorted(list(pair)) for pair in excluded_bidirectional],
+        "excluded_cycle_relations": [list(edge) for edge in excluded_cycle_relations],
         "summary": summary_rows,
         "leaders_per_grade": leaders_per_grade,
-        "excluded_bidirectional_per_grade": excluded_bidirectional_per_grade,
-        "removed_edges_per_grade": {
-            g: [list(e) for e in removed]
-            for g, removed in removed_edges_per_grade.items()
-        },
+        "integrated_leaders": metrics.to_dict(orient="records"),
         "visualizations": visualization_paths,
+        "enforce_dag": enforce_dag,
+        "dag_enforcement_applied": False,
     }
-
     with (out_dir / "network_inference_results.json").open("w", encoding="utf-8") as f:
         json.dump(result, f, indent=2)
 
@@ -943,73 +463,31 @@ def run_module3_network_inference(
         "",
         "**Algorithm**: Kinnear & Mazumdar (2023) Algorithm 1 — Pairwise Recovery",
         "",
-        "> **Methodology Notes:**",
-        "> - Edges are recovered via *transitive reduction* (Algorithm 1), not direct",
-        ">   thresholding of pairwise test results.",
-        "> - Bidirectional pairs are excluded as confounders (Corollary 2.3).",
-        "> - `is_polytree` checks whether the DAG's undirected skeleton is a forest",
-        ">   (correct Definition 2.9), not whether each node has ≤1 parent.",
-        "> - The exact-recovery guarantee requires the Strongly Causal Graph (SCG)",
-        ">   assumption.  Real-world results are heuristic estimates.",
+        "> One integrated graph is recovered over nodes `(market_id, grade)`.",
+        "> No direct edge thresholding or post-Algorithm-1 cycle-breaking heuristic is applied.",
+        "> Ancestor relations that still form directed cycles are dropped before Algorithm 1",
+        "> because they violate the ancestor partial-order assumption required by the paper.",
         "",
         f"Input: `{granger_path}`",
         f"Output dir: `{out_dir}`",
-        f"DAG enforcement: `{enforce_dag}`",
         "",
         "## Per Grade Summary",
         "",
-        "| Grade | Nodes | E (edges) | W (ancestors) | Bidir excluded | Transitive removed | DAG cycles removed | DAG | Polytree | Top Leader | Leader Score |",
-        "|---|---:|---:|---:|---:|---:|---:|:---:|:---:|---|---:|",
+        "| Grade | Nodes | Incident Edges | Out Edges | In Edges | Cross-Grade Edges | DAG | Polytree | Top Leader |",
+        "|---|---:|---:|---:|---:|---:|:---:|:---:|---|",
     ]
-    for r in summary_rows:
+    for row in summary_rows:
         md_lines.append(
-            f"| {r['grade']} | {r['nodes']} | {r['edges']} "
-            f"| {r['W_size']} "
-            f"| {r['bidirectional_excluded']} "
-            f"| {r['transitive_removed']} "
-            f"| {r['edges_removed_for_dag']} "
-            f"| {r['is_dag']} | {r['is_polytree']} | {r['top_leader']} "
-            f"| {r['top_leader_score']:.4f} |"
+            f"| {row['grade']} | {row['nodes']} | {row['edges']} | {row['out_edges']} | "
+            f"{row['in_edges']} | {row['cross_grade_edges']} | {row['is_dag']} | "
+            f"{row['is_polytree']} | {row['top_leader']} |"
         )
-
-    # Excluded bidirectional pairs section
-    if any(excluded_bidirectional_per_grade.values()):
-        md_lines += [
-            "",
-            "## Excluded Bidirectional Pairs (Confounders, Corollary 2.3)",
-            "",
-            "| Grade | Market A | Market B |",
-            "|---|---|---|",
-        ]
-        for grade, pairs in excluded_bidirectional_per_grade.items():
-            for pair in pairs:
-                if len(pair) >= 2:
-                    md_lines.append(f"| {grade} | {pair[0]} | {pair[1]} |")
-
-    # Removed edges audit section
-    if any(removed_edges_per_grade.values()):
-        md_lines += [
-            "",
-            "## Edges Removed by Cycle-Breaking Heuristic (Outside Paper)",
-            "",
-            "| Grade | Source | Target |",
-            "|---|---|---|",
-        ]
-        for grade, removed in removed_edges_per_grade.items():
-            for src, tgt in removed:
-                md_lines.append(f"| {grade} | {src} | {tgt} |")
-
     (out_dir / "network_summary.md").write_text("\n".join(md_lines), encoding="utf-8")
 
-    # Console summary
     print(f"\n[MODUL 3] Output tersimpan di: {out_dir}")
-    for r in summary_rows:
-        print(
-            f"  Grade={r['grade']}: W={r['W_size']}, E={r['edges']}, "
-            f"bidir_excl={r['bidirectional_excluded']}, "
-            f"transitive_removed={r['transitive_removed']}, "
-            f"DAG={r['is_dag']}, Polytree={r['is_polytree']}, "
-            f"TopLeader={r['top_leader']}"
-        )
+    print(
+        f"  Integrated graph: nodes={len(node_labels)}, edges={len(recovered_edges)}, "
+        f"ancestor_relations={len(W)}"
+    )
 
     return result

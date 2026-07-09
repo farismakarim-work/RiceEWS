@@ -1,93 +1,141 @@
-"""
-Test Script untuk MODUL 3 - Network Inference
-============================================
-
-Script ini menguji MODUL 3 dengan input dari output MODUL 2:
-- Membaca granger_results.json
-- Membangun edge list per grade
-- Mengecek properti DAG/polytree sederhana
-- Menghasilkan output terpisah di data/processed/module_03
-- Memverifikasi output visualisasi HTML per grade
-
-Cara menjalankan:
-    python test_modul3.py
-"""
-
+import json
 import sys
 from pathlib import Path
 
+import pandas as pd
+import pytest
 
-# Add src to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
+from modules.causality_testing.granger_tester import run_full_granger_analysis
 from modules.module_03_network_inference.network_builder import run_module3_network_inference
+from modules.preprocessing.data_preprocessor import run_full_preprocessing_pipeline
 
 
-def _check_exists(path: Path, label: str) -> None:
-    if not path.exists():
-        raise FileNotFoundError(f"✗ Missing {label}: {path}")
-    print(f"✓ Found {label}: {path}")
+REPO_ROOT = Path(__file__).resolve().parent
+PILOT_DATASET = REPO_ROOT / "data" / "raw" / "Pilot Dataset.xlsx"
 
 
-def _check_non_empty(path: Path, label: str) -> None:
-    _check_exists(path, label)
-    if path.stat().st_size == 0:
-        raise ValueError(f"✗ Empty {label}: {path}")
-    print(f"✓ Non-empty {label} ({path.stat().st_size} bytes)")
+@pytest.fixture(scope="module")
+def module3_outputs(tmp_path_factory):
+    base_dir = tmp_path_factory.mktemp("module3")
+    module1_dir = base_dir / "module_01"
+    module2_dir = base_dir / "module_02"
+    module3_dir = base_dir / "module_03"
 
-
-def main() -> int:
-    print("\n" + "=" * 70)
-    print("MODUL 3 - NETWORK INFERENCE TEST")
-    print("=" * 70)
-
-    root = Path(__file__).parent
-    granger_json = root / "data" / "processed" / "granger_results.json"
-    output_dir = root / "data" / "processed" / "module_03"
-
-    _check_non_empty(granger_json, "MODUL 2 output (granger_results.json)")
-
-    print("\nRunning MODUL 3...")
-    results = run_module3_network_inference(
-        granger_json_path=str(granger_json),
-        output_dir=str(output_dir),
+    preprocessed_csv = module1_dir / "preprocessed_pilot_data.csv"
+    run_full_preprocessing_pipeline(
+        input_file=PILOT_DATASET,
+        output_file=preprocessed_csv,
+        config={"detrend_method": "none", "duplicate_strategy": "error"},
     )
-
-    print("\nMODUL 3 selesai. Verifikasi output...")
-
-    # Core outputs
-    _check_non_empty(output_dir / "network_inference_results.json", "network_inference_results.json")
-    _check_non_empty(output_dir / "network_edges.csv", "network_edges.csv")
-    _check_non_empty(output_dir / "network_summary.csv", "network_summary.csv")
-    _check_non_empty(output_dir / "network_summary.md", "network_summary.md")
-
-    # Per-grade leader outputs + visualization outputs
-    grades = results.get("grades", [])
-    for grade in grades:
-        _check_non_empty(output_dir / f"market_leaders_{grade}.csv", f"market_leaders_{grade}.csv")
-        _check_non_empty(output_dir / f"network_graph_{grade}.html", f"network_graph_{grade}.html")
-
-    # Additional sanity check for result metadata
-    visualizations = results.get("visualizations", {})
-    for grade in grades:
-        if grade not in visualizations:
-            raise KeyError(f"✗ Missing visualization path in results for grade: {grade}")
-
-    print("\nSummary:")
-    for row in results.get("summary", []):
-        print(
-            f"  - Grade={row['grade']}, Nodes={row['nodes']}, Edges={row['edges']}, "
-            f"DAG={row['is_dag']}, Polytree={row['is_polytree']}, "
-            f"TopLeader={row['top_leader']}"
-        )
-
-    print("\n" + "=" * 70)
-    print("✓ TEST MODUL 3 BERHASIL")
-    print("=" * 70)
-    print(f"Output directory: {output_dir}")
-
-    return 0
+    run_full_granger_analysis(
+        input_file=str(preprocessed_csv),
+        output_dir=str(module2_dir),
+        config={"lag_order": 4, "price_col": "price_diff", "significance_level": 0.05},
+    )
+    results = run_module3_network_inference(
+        granger_json_path=str(module2_dir / "granger_results.json"),
+        output_dir=str(module3_dir),
+    )
+    return {"module3_dir": module3_dir, "results": results}
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
+def test_module3_recovers_integrated_graph_with_metadata(module3_outputs):
+    module3_dir = module3_outputs["module3_dir"]
+    results = module3_outputs["results"]
+
+    edges_path = module3_dir / "network_edges.csv"
+    summary_path = module3_dir / "network_summary.csv"
+
+    assert results["analysis_type"] == "integrated"
+    assert edges_path.exists()
+    assert summary_path.exists()
+    assert (module3_dir / "network_inference_results.json").exists()
+    assert (module3_dir / "network_summary.md").exists()
+    assert (module3_dir / "network_graph_integrated.html").exists()
+    assert (module3_dir / "market_leaders_integrated.csv").exists()
+
+    edges_df = pd.read_csv(edges_path)
+    summary_df = pd.read_csv(summary_path)
+
+    required_columns = {
+        "source",
+        "target",
+        "grade_source",
+        "grade_target",
+        "lag",
+        "p_value",
+        "adjusted_p_value",
+        "test_statistic",
+        "relationship_type",
+        "direction",
+    }
+    assert required_columns.issubset(edges_df.columns)
+    assert not edges_df.empty
+    assert edges_df[["p_value", "adjusted_p_value", "test_statistic"]].notna().all().all()
+
+    expected_grades = {"low1", "low2", "med1", "med2"}
+    assert set(summary_df["grade"]) == expected_grades
+    assert (summary_df["nodes"] > 0).all()
+    assert summary_df["top_leader"].notna().all()
+
+    for grade in expected_grades:
+        assert (module3_dir / f"market_leaders_{grade}.csv").exists()
+        assert (module3_dir / f"network_graph_{grade}.html").exists()
+
+
+def test_module3_parses_legacy_string_booleans_and_recovers_cross_grade_edges(tmp_path):
+    module2_json = tmp_path / "module_02" / "granger_results.json"
+    module2_json.parent.mkdir(parents=True)
+
+    synthetic_results = {
+        "analysis_type": "integrated",
+        "nodes": [
+            {"node_id": "M101_low1", "market_id": 101, "grade": "low1"},
+            {"node_id": "M102_low1", "market_id": 102, "grade": "low1"},
+            {"node_id": "M103_low1", "market_id": 103, "grade": "low1"},
+            {"node_id": "M101_med1", "market_id": 101, "grade": "med1"},
+        ],
+        "pairwise_tests": {
+            "M101_low1→M102_low1": {
+                "granger_causes": "True",
+                "f_statistic": 9.0,
+                "p_value": 0.01,
+                "p_value_bh": 0.02,
+                "lag_order": 2,
+            },
+            "M102_low1→M103_low1": {
+                "granger_causes": "True",
+                "f_statistic": 8.0,
+                "p_value": 0.02,
+                "p_value_bh": 0.03,
+                "lag_order": 2,
+            },
+            "M101_low1→M103_low1": {
+                "granger_causes": "True",
+                "f_statistic": 7.0,
+                "p_value": 0.03,
+                "p_value_bh": 0.04,
+                "lag_order": 2,
+            },
+            "M101_low1→M101_med1": {
+                "granger_causes": "True",
+                "f_statistic": 6.0,
+                "p_value": 0.04,
+                "p_value_bh": 0.05,
+                "lag_order": 1,
+            },
+        },
+    }
+    module2_json.write_text(json.dumps(synthetic_results), encoding="utf-8")
+
+    output_dir = tmp_path / "module_03"
+    run_module3_network_inference(str(module2_json), str(output_dir))
+
+    edges_df = pd.read_csv(output_dir / "network_edges.csv")
+    edge_pairs = set(zip(edges_df["source_node"], edges_df["target_node"]))
+
+    assert ("M101_low1", "M103_low1") not in edge_pairs
+    assert ("M101_low1", "M101_med1") in edge_pairs
+    assert ((edges_df["grade_source"] != edges_df["grade_target"]).any())

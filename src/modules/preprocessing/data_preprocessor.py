@@ -26,7 +26,7 @@ Features:
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Sequence, Union
 from scipy import stats
 from statsmodels.tsa.stattools import adfuller, kpss
 import logging
@@ -35,6 +35,34 @@ import json
 
 warnings.filterwarnings('ignore')
 logger = logging.getLogger(__name__)
+RAW_DATA_DIR = Path(__file__).resolve().parents[3] / "data" / "raw"
+
+
+def _normalize_input_files(
+    input_file: Optional[Union[str, Path, Sequence[Union[str, Path]]]]
+) -> List[Path]:
+    """Normalize supported input_file values into a list of Excel paths."""
+
+    if input_file is None:
+        files = sorted(RAW_DATA_DIR.glob("*.xlsx"))
+        if not files:
+            raise FileNotFoundError(
+                f"No Excel datasets found in raw data directory: {RAW_DATA_DIR}"
+            )
+        return files
+
+    if isinstance(input_file, (str, Path)):
+        return [Path(input_file)]
+
+    if isinstance(input_file, Sequence):
+        files = [Path(path) for path in input_file]
+        if not files:
+            raise ValueError("input_file list is empty")
+        return files
+
+    raise TypeError(
+        "input_file must be None, a path-like value, or a list of path-like values"
+    )
 
 
 class DataPreprocessor:
@@ -56,9 +84,13 @@ class DataPreprocessor:
         self.logger = logger
         self.processing_report = {}
     
-    def load_pilot_data(self, filepath: str) -> pd.DataFrame:
+    def load_pilot_data(
+        self,
+        filepath: Optional[Union[str, Path, Sequence[Union[str, Path]]]],
+        duplicate_strategy: str = 'error',
+    ) -> pd.DataFrame:
         """
-        Load pilot dataset dari Excel file.
+        Load satu atau banyak dataset Excel mentah.
         
         Expected format:
         - Date (datetime)
@@ -68,8 +100,11 @@ class DataPreprocessor:
         
         Parameters:
         -----------
-        filepath : str
-            Path to Excel file (e.g., 'data/raw/Pilot Dataset.xlsx')
+        filepath : None | str | Path | list[str] | list[Path]
+            Jika None, semua file ``*.xlsx`` di ``data/raw`` akan dimuat.
+        duplicate_strategy : {'keep_first', 'keep_last', 'error'}
+            Strategi saat ditemukan duplikasi ``(date, market_id, grade)``
+            lintas file input.
             
         Returns:
         --------
@@ -78,36 +113,92 @@ class DataPreprocessor:
         """
         
         try:
-            filepath = Path(filepath)
-            if not filepath.exists():
-                raise FileNotFoundError(f"File not found: {filepath}")
-            
-            # Load from Excel
-            df = pd.read_excel(filepath)
-            
+            if duplicate_strategy not in {'keep_first', 'keep_last', 'error'}:
+                raise ValueError(
+                    "duplicate_strategy must be one of: 'keep_first', 'keep_last', 'error'"
+                )
+
+            filepaths = _normalize_input_files(filepath)
+            frames: List[pd.DataFrame] = []
+            expected_columns: Optional[List[str]] = None
+
+            for file_index, path in enumerate(filepaths):
+                if not path.exists():
+                    raise FileNotFoundError(f"File not found: {path}")
+
+                frame = pd.read_excel(path)
+                raw_columns = frame.columns.tolist()
+                frame.columns = frame.columns.str.lower()
+
+                if expected_columns is None:
+                    expected_columns = frame.columns.tolist()
+                elif frame.columns.tolist() != expected_columns:
+                    raise ValueError(
+                        "Input datasets must have identical schemas. "
+                        f"Expected columns {expected_columns} from {filepaths[0].name}, "
+                        f"but found {frame.columns.tolist()} in {path.name}."
+                    )
+
+                required_cols = ['date', 'market_id', 'grade', 'price']
+                missing_cols = [col for col in required_cols if col not in frame.columns]
+                if missing_cols:
+                    raise ValueError(
+                        f"Missing required columns in {path.name}: {missing_cols}\n"
+                        f"Found: {frame.columns.tolist()}"
+                    )
+
+                frame['__source_file'] = path.name
+                frame['__source_file_order'] = file_index
+                frame['__source_row_order'] = np.arange(len(frame))
+                frames.append(frame)
+
+                if self.verbose:
+                    print(f"\n{'='*70}")
+                    print("DATA LOADING")
+                    print(f"{'='*70}")
+                    print(f"File: {path.name}")
+                    print(f"Shape: {frame.shape}")
+                    print(f"Columns (raw): {raw_columns}")
+
+            df = pd.concat(frames, ignore_index=True)
+
             if self.verbose:
-                print(f"\n{'='*70}")
-                print("DATA LOADING")
-                print(f"{'='*70}")
-                print(f"File: {filepath.name}")
+                input_summary = ", ".join(path.name for path in filepaths)
                 print(f"Shape: {df.shape}")
-                print(f"Columns (raw): {df.columns.tolist()}")
-            
-            # Standardize column names to lowercase
-            df.columns = df.columns.str.lower()
-            
-            # Validate required columns
-            required_cols = ['date', 'market_id', 'grade', 'price']
-            missing_cols = [col for col in required_cols if col not in df.columns]
-            
-            if missing_cols:
-                raise ValueError(f"Missing required columns: {missing_cols}\nFound: {df.columns.tolist()}")
-            
-            # Convert date to datetime if not already
+                print(f"Files: {input_summary}")
+
             df['date'] = pd.to_datetime(df['date'])
-            
-            # Sort by date, market, grade
+            df['market_id'] = pd.to_numeric(df['market_id'])
+            df['price'] = pd.to_numeric(df['price'])
+            df['grade'] = df['grade'].astype(str)
+
+            duplicate_keys = ['date', 'market_id', 'grade']
+            duplicate_mask = df.duplicated(subset=duplicate_keys, keep=False)
+            duplicate_count = int(duplicate_mask.sum())
+            duplicate_records = int(df.loc[duplicate_mask, duplicate_keys].drop_duplicates().shape[0])
+            if duplicate_count:
+                duplicate_preview = (
+                    df.loc[duplicate_mask, duplicate_keys + ['__source_file']]
+                    .sort_values(duplicate_keys + ['__source_file'])
+                    .head(10)
+                    .to_dict(orient='records')
+                )
+                if duplicate_strategy == 'error':
+                    raise ValueError(
+                        "Duplicate (date, market_id, grade) rows detected across input datasets. "
+                        f"Found {duplicate_records} duplicated keys. "
+                        f"Set duplicate_strategy to 'keep_first' or 'keep_last' to resolve. "
+                        f"Examples: {duplicate_preview}"
+                    )
+                keep = 'first' if duplicate_strategy == 'keep_first' else 'last'
+                df = df.drop_duplicates(subset=duplicate_keys, keep=keep).copy()
+                if self.verbose:
+                    print(
+                        f"Resolved {duplicate_records} duplicate keys using duplicate_strategy='{duplicate_strategy}'."
+                    )
+
             df = df.sort_values(['date', 'market_id', 'grade']).reset_index(drop=True)
+            df = df.drop(columns=['__source_file', '__source_file_order', '__source_row_order'])
             
             if self.verbose:
                 print(f"\nData Info:")
@@ -123,10 +214,13 @@ class DataPreprocessor:
             
             self.processing_report['loaded'] = {
                 'records': len(df),
+                'input_files': [str(path) for path in filepaths],
                 'markets': sorted(df['market_id'].unique().tolist()),
                 'grades': sorted(df['grade'].unique().tolist()),
                 'date_range': (str(df['date'].min().date()), str(df['date'].max().date())),
-                'price_range': (int(df['price'].min()), int(df['price'].max()))
+                'price_range': (int(df['price'].min()), int(df['price'].max())),
+                'duplicate_strategy': duplicate_strategy,
+                'duplicate_key_count': duplicate_records
             }
             
             return df
@@ -768,8 +862,8 @@ class DataPreprocessor:
         return output_path
 
 
-def run_full_preprocessing_pipeline(input_file: str, 
-                                   output_file: str,
+def run_full_preprocessing_pipeline(input_file: Optional[Union[str, Path, Sequence[Union[str, Path]]]], 
+                                   output_file: Union[str, Path],
                                    config: Dict = None) -> pd.DataFrame:
     """
     Run complete preprocessing pipeline untuk pilot dataset.
@@ -786,9 +880,9 @@ def run_full_preprocessing_pipeline(input_file: str,
     
     Parameters:
     -----------
-    input_file : str
-        Path to raw Excel file
-    output_file : str
+    input_file : None | str | Path | list[str] | list[Path]
+        Raw Excel input(s). Jika None, semua ``*.xlsx`` di ``data/raw`` diproses.
+    output_file : str | Path
         Path to save processed data
     config : Dict, optional
         Configuration untuk setiap step
@@ -806,22 +900,26 @@ def run_full_preprocessing_pipeline(input_file: str,
     # that Granger tests rely on.  The default is therefore 'none' for detrend_method
     # when differencing_order >= 1.  If you need detrending without differencing, set
     # detrend_method to 'linear' or 'polynomial' AND differencing_order to 0.
-    if config is None:
-        config = {
-            'missing_method': 'interpolate',
-            'outlier_method': 'iqr',
-            'outlier_threshold': 1.5,
-            'log_transform': True,
-            'detrend_method': 'none',
-            'differencing_order': 1,
-            'standardize_method': 'zscore',
-            'stationarity_test': 'adf'
-        }
+    defaults = {
+        'missing_method': 'interpolate',
+        'outlier_method': 'iqr',
+        'outlier_threshold': 1.5,
+        'log_transform': True,
+        'detrend_method': 'none',
+        'differencing_order': 1,
+        'standardize_method': 'zscore',
+        'stationarity_test': 'adf',
+        'duplicate_strategy': 'error',
+    }
+    config = {**defaults, **(config or {})}
     
     preprocessor = DataPreprocessor(verbose=True)
     
     # Load
-    df = preprocessor.load_pilot_data(input_file)
+    df = preprocessor.load_pilot_data(
+        input_file,
+        duplicate_strategy=config['duplicate_strategy'],
+    )
     
     # Clean
     df = preprocessor.handle_missing_values(df, method=config['missing_method'])
@@ -859,8 +957,9 @@ def run_full_preprocessing_pipeline(input_file: str,
     )
     
     # Save
-    output_format = 'excel' if output_file.endswith('.xlsx') else 'csv'
-    preprocessor.save_processed_data(df, output_file, output_format=output_format)
+    output_path = Path(output_file)
+    output_format = 'excel' if output_path.suffix.lower() == '.xlsx' else 'csv'
+    preprocessor.save_processed_data(df, str(output_path), output_format=output_format)
     
     print(f"\n{'='*70}")
     print("PREPROCESSING COMPLETE - Ready for Granger Causality Testing")
@@ -874,7 +973,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     
     input_file = "data/raw/Pilot Dataset.xlsx"
-    output_file = "data/processed/preprocessed_pilot_data.csv"
+    output_file = "data/processed/module_01/preprocessed_pilot_data.csv"
     
     try:
         df_processed = run_full_preprocessing_pipeline(input_file, output_file)

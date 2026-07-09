@@ -1,5 +1,5 @@
-grade,nodes,edges,W_size,bidirectional_excluded,transitive_removed,edges_removed_for_dag,is_dag,is_polytree,top_leader,top_leader_score
-low1,0,0,0,15,0,0,True,True,,0.0
-low2,0,0,0,15,0,0,True,True,,0.0
-med1,0,0,0,15,0,0,True,True,,0.0
-med2,0,0,0,15,0,0,True,True,,0.0
+grade,nodes,edges,out_edges,in_edges,cross_grade_edges,is_dag,is_polytree,top_leader,top_leader_score
+low1,6,3,1,2,3,True,False,M106_low1,1.0
+low2,6,10,2,10,8,True,False,M106_low2,1.0
+med1,6,13,13,3,10,True,False,M101_med1,10.0
+med2,6,7,3,4,7,True,False,M106_med2,1.0
