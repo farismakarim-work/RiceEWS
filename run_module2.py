@@ -1,0 +1,21 @@
+"""
+run_module2.py — Execute Module 2 only (Pairwise Granger Analysis).
+
+Prerequisites: Module 1 outputs must exist before running this script.
+               Run `python run_module1.py` first if they are missing.
+
+Usage:
+  python run_module2.py
+"""
+
+import subprocess
+import sys
+from pathlib import Path
+
+if __name__ == "__main__":
+    engine = Path(__file__).resolve().parent / "run_pipeline.py"
+    result = subprocess.run(
+        [sys.executable, str(engine), "--module", "2"] + sys.argv[1:],
+        check=False,
+    )
+    sys.exit(result.returncode)
