@@ -179,11 +179,11 @@ def test_module1_pre_validation_skips_adf_for_not_testable_series(monkeypatch):
     preprocessor = DataPreprocessor(verbose=False)
     adf_calls = {"count": 0}
 
-    def _fake_adf(values, autolag="AIC"):
+    def mock_adf(values, autolag="AIC"):
         adf_calls["count"] += 1
         return (-3.0, 0.01, 0, len(values), {}, 0.0)
 
-    monkeypatch.setattr(data_preprocessor, "adfuller", _fake_adf)
+    monkeypatch.setattr(data_preprocessor, "adfuller", mock_adf)
 
     constant = preprocessor._evaluate_stationarity_series(np.full(12, 5.0))
     short = preprocessor._evaluate_stationarity_series(np.arange(5, dtype=float))
@@ -207,11 +207,11 @@ def test_module1_pre_validation_skips_adf_for_not_testable_series(monkeypatch):
 def test_module1_stationarity_status_pass_and_fail(monkeypatch):
     preprocessor = DataPreprocessor(verbose=False)
 
-    def _fake_adf(values, autolag="AIC"):
+    def mock_adf(values, autolag="AIC"):
         p_value = 0.01 if float(np.mean(values)) < 20 else 0.2
         return (-3.0, p_value, 0, len(values), {}, 0.0)
 
-    monkeypatch.setattr(data_preprocessor, "adfuller", _fake_adf)
+    monkeypatch.setattr(data_preprocessor, "adfuller", mock_adf)
 
     pass_result = preprocessor._evaluate_stationarity_series(np.arange(1, 13, dtype=float))
     fail_result = preprocessor._evaluate_stationarity_series(np.arange(100, 112, dtype=float))
@@ -229,10 +229,10 @@ def test_module1_min_observations_threshold(monkeypatch):
     preprocessor = DataPreprocessor(verbose=False)
     preprocessor.min_observations = 5
 
-    def _fake_adf(values, autolag="AIC"):
+    def mock_adf(values, autolag="AIC"):
         return (-3.0, 0.2, 0, len(values), {}, 0.0)
 
-    monkeypatch.setattr(data_preprocessor, "adfuller", _fake_adf)
+    monkeypatch.setattr(data_preprocessor, "adfuller", mock_adf)
 
     exact_threshold = preprocessor._evaluate_stationarity_series(np.arange(1, 6, dtype=float))
     below_threshold = preprocessor._evaluate_stationarity_series(np.arange(1, 5, dtype=float))
@@ -260,11 +260,11 @@ def test_module1_stationarity_report_excludes_not_testable(tmp_path, monkeypatch
     input_path = tmp_path / "mixed_input.xlsx"
     pd.DataFrame(rows).to_excel(input_path, index=False)
 
-    def _fake_adf(values, autolag="AIC"):
+    def mock_adf(values, autolag="AIC"):
         p_value = 0.01 if float(np.mean(values)) < 20 else 0.2
         return (-3.0, p_value, 0, len(values), {}, 0.0)
 
-    monkeypatch.setattr(data_preprocessor, "adfuller", _fake_adf)
+    monkeypatch.setattr(data_preprocessor, "adfuller", mock_adf)
 
     output_file = tmp_path / "module_01" / "preprocessed_pilot_data.csv"
     processed = run_full_preprocessing_pipeline(

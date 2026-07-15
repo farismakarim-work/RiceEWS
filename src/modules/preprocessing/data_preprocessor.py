@@ -1055,7 +1055,7 @@ class DataPreprocessor:
 def _format_summary_table(rows: List[Tuple[str, Union[int, str]]]) -> str:
     """Format key-value rows into an ASCII table."""
     if not rows:
-        rows = [("No data available", 0)]
+        rows = [("No data available", "N/A")]
     label_width = max(len(label) for label, _ in rows)
     value_width = max(len(str(value)) for _, value in rows)
     border = f"+-{'-' * label_width}-+-{'-' * value_width}-+"
@@ -1096,7 +1096,7 @@ def _print_module1_summary(stationarity_report_df: pd.DataFrame) -> None:
     status_counts = stationarity_report_df['Status'].value_counts()
     not_testable_reasons = (
         stationarity_report_df[stationarity_report_df['Status'] == STATUS_NOT_TESTABLE]['Reason']
-        .replace('', 'Unknown')
+        .replace('', 'No reason provided')
         .value_counts()
     )
 
