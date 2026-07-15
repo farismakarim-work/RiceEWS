@@ -42,6 +42,40 @@ def _load_granger_json(granger_json_path: Path) -> Dict:
     return data
 
 
+def _filter_granger_payload(data: Dict, markets: Optional[List[int]] = None, grades: Optional[List[str]] = None) -> Dict:
+    """Filter integrated Module 2 payload by node attributes before Algorithm 1."""
+    if not markets and not grades:
+        return data
+
+    filtered = dict(data)
+    market_set = {int(market) for market in markets} if markets else None
+    grade_set = {str(grade) for grade in grades} if grades else None
+
+    nodes = data.get("nodes", [])
+    kept_nodes = []
+    kept_ids = set()
+    for record in nodes:
+        market_ok = market_set is None or int(record.get("market_id")) in market_set
+        grade_ok = grade_set is None or str(record.get("grade")) in grade_set
+        if market_ok and grade_ok:
+            kept_nodes.append(record)
+            kept_ids.add(str(record.get("node_id")))
+
+    pairwise = data.get("pairwise_tests", {})
+    kept_pairwise = {}
+    for relation, result in pairwise.items():
+        parsed = _parse_relation(relation)
+        if parsed is None:
+            continue
+        source_node, target_node = parsed
+        if source_node in kept_ids and target_node in kept_ids:
+            kept_pairwise[relation] = result
+
+    filtered["nodes"] = kept_nodes
+    filtered["pairwise_tests"] = kept_pairwise
+    return filtered
+
+
 def _parse_relation(relation: str) -> Optional[Tuple[str, str]]:
     rel = str(relation).replace("->", "→")
     if "→" not in rel:
@@ -360,6 +394,8 @@ def run_module3_network_inference(
     granger_json_path: str,
     output_dir: str,
     enforce_dag: bool = True,
+    markets: Optional[List[int]] = None,
+    grades: Optional[List[str]] = None,
 ) -> Dict:
     """
     Recover one integrated graph using Algorithm 1 only.
@@ -373,12 +409,15 @@ def run_module3_network_inference(
     out_dir.mkdir(parents=True, exist_ok=True)
 
     data = _load_granger_json(granger_path)
+    data = _filter_granger_payload(data, markets=markets, grades=grades)
     if data.get("analysis_type") != "integrated":
         raise ValueError("Module 3 expects integrated Module 2 output.")
 
     node_records = data.get("nodes", [])
+    if not node_records:
+        raise ValueError("No nodes remain for Module 3 after applying filters.")
     node_labels = [record["node_id"] for record in node_records]
-    grades = sorted({record["grade"] for record in node_records})
+    node_grades = sorted({record["grade"] for record in node_records})
     pairwise_tests = data.get("pairwise_tests", {})
 
     W, excluded_bidirectional, metadata_lookup = _build_ancestor_set_W(pairwise_tests)
@@ -398,7 +437,7 @@ def run_module3_network_inference(
     integrated_viz = _save_html_visualization("network_graph_integrated", node_labels, edge_df, out_dir)
     visualization_paths["integrated"] = str(integrated_viz)
 
-    for grade in grades:
+    for grade in node_grades:
         grade_nodes = [record["node_id"] for record in node_records if record["grade"] == grade]
         grade_metrics = metrics[metrics["grade"] == grade].reset_index(drop=True)
         leaders_per_grade[grade] = grade_metrics.to_dict(orient="records")

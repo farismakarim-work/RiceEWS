@@ -33,9 +33,30 @@ import logging
 import warnings
 import json
 
+from config import (
+    RAW_DATA_DIR,
+    RAW_INPUT_FILE_PATTERN,
+    M1_DIFFERENCING_MODE,
+    M1_DIFFERENCING_MODE_OPTIONS,
+    M1_DUPLICATE_STRATEGY,
+    M1_LOG_TRANSFORM,
+    M1_MAX_DIFFERENCING_ORDER,
+    M1_MANUAL_DIFFERENCING_ORDER,
+    M1_MISSING_VALUE_MODE,
+    M1_MODULE2_PRICE_COLUMN,
+    M1_OUTLIER_MODE,
+    M1_OUTLIER_THRESHOLD,
+    M1_REQUIRE_STATIONARITY,
+    M1_STANDARDIZATION_ENABLED,
+    M1_STANDARDIZATION_METHOD,
+    M1_STATIONARITY_SIGNIFICANCE_LEVEL,
+    M1_STATIONARITY_TEST,
+    M1_DETREND_METHOD,
+    M1_VERBOSE,
+)
+
 warnings.filterwarnings('ignore')
 logger = logging.getLogger(__name__)
-RAW_DATA_DIR = Path(__file__).resolve().parents[3] / "data" / "raw"
 
 
 def _normalize_input_files(
@@ -44,7 +65,7 @@ def _normalize_input_files(
     """Normalize supported input_file values into a list of Excel paths."""
 
     if input_file is None:
-        files = sorted(RAW_DATA_DIR.glob("*.xlsx"))
+        files = sorted(RAW_DATA_DIR.glob(RAW_INPUT_FILE_PATTERN))
         if not files:
             raise FileNotFoundError(
                 f"No Excel datasets found in raw data directory: {RAW_DATA_DIR}"
@@ -71,7 +92,7 @@ class DataPreprocessor:
     Designed untuk pilot dataset structure with multiple grades and markets.
     """
     
-    def __init__(self, verbose: bool = True):
+    def __init__(self, verbose: bool = M1_VERBOSE):
         """
         Initialize preprocessor.
         
@@ -235,7 +256,7 @@ class DataPreprocessor:
                              market_col: str = 'market_id',
                              grade_col: str = 'grade',
                              date_col: str = 'date',
-                             method: str = 'interpolate') -> pd.DataFrame:
+                             method: str = M1_MISSING_VALUE_MODE) -> pd.DataFrame:
         """
         Handle missing values dalam time series per market per grade.
         
@@ -266,10 +287,19 @@ class DataPreprocessor:
             print(f"{'='*70}")
             print(f"Missing values before: {missing_before:,}")
         
-        if method == 'drop':
+        if method == 'disabled':
+            if self.verbose:
+                print("Missing value handling is disabled by configuration")
+            self.processing_report['missing_values'] = {
+                'before': int(missing_before),
+                'after': int(missing_before),
+                'method': method
+            }
+            return df
+        elif method == 'drop':
             df = df.dropna(subset=[price_col])
-        
-        elif method == 'interpolate':
+
+        elif method in {'interpolate', 'linear_interpolation'}:
             # Interpolate per market-grade combination
             for market in df[market_col].unique():
                 for grade in df[grade_col].unique():
@@ -287,10 +317,20 @@ class DataPreprocessor:
                     if mask.any():
                         df.loc[mask, price_col] = (
                             df.loc[mask, price_col]
-                            .fillna(method='ffill')
-                            .fillna(method='bfill')
+                            .ffill()
+                            .bfill()
                         )
-        
+        elif method == 'backward_fill':
+            for market in df[market_col].unique():
+                for grade in df[grade_col].unique():
+                    mask = (df[market_col] == market) & (df[grade_col] == grade)
+                    if mask.any():
+                        df.loc[mask, price_col] = (
+                            df.loc[mask, price_col]
+                            .bfill()
+                            .ffill()
+                        )
+
         elif method == 'mean':
             for market in df[market_col].unique():
                 for grade in df[grade_col].unique():
@@ -300,6 +340,8 @@ class DataPreprocessor:
                         df.loc[mask, price_col] = (
                             df.loc[mask, price_col].fillna(market_grade_mean)
                         )
+        else:
+            raise ValueError(f"Unsupported missing-value mode: {method}")
         
         missing_after = df[price_col].isnull().sum()
         
@@ -320,8 +362,8 @@ class DataPreprocessor:
                        price_col: str = 'price',
                        market_col: str = 'market_id',
                        grade_col: str = 'grade',
-                       method: str = 'iqr',
-                       threshold: float = 1.5) -> pd.DataFrame:
+                       method: str = M1_OUTLIER_MODE,
+                       threshold: float = M1_OUTLIER_THRESHOLD) -> pd.DataFrame:
         """
         Remove outliers per market-grade combination.
         
@@ -349,6 +391,14 @@ class DataPreprocessor:
             print(f"\n{'='*70}")
             print(f"OUTLIER DETECTION & REMOVAL (method: {method}, threshold: {threshold})")
             print(f"{'='*70}")
+
+        if method == 'disabled':
+            self.processing_report['outliers'] = {
+                'method': method,
+                'threshold': threshold,
+                'total_replaced': 0
+            }
+            return df
         
         for market in df[market_col].unique():
             for grade in df[grade_col].unique():
@@ -403,7 +453,7 @@ class DataPreprocessor:
                                 price_col: str = 'price',
                                 market_col: str = 'market_id',
                                 grade_col: str = 'grade',
-                                apply: bool = True) -> pd.DataFrame:
+                                apply: bool = M1_LOG_TRANSFORM) -> pd.DataFrame:
         """
         Apply natural log transformation untuk stabilize variance.
         
@@ -473,7 +523,7 @@ class DataPreprocessor:
                     market_col: str = 'market_id',
                     grade_col: str = 'grade',
                     date_col: str = 'date',
-                    method: str = 'linear') -> pd.DataFrame:
+                    method: str = M1_DETREND_METHOD) -> pd.DataFrame:
         """
         Remove trend component per market-grade combination.
         
@@ -701,12 +751,80 @@ class DataPreprocessor:
         
         return df
     
+    def filter_data(self,
+                    df: pd.DataFrame,
+                    markets: Optional[List[int]] = None,
+                    grades: Optional[List[str]] = None,
+                    date_range: Optional[Tuple[Optional[pd.Timestamp], Optional[pd.Timestamp]]] = None) -> pd.DataFrame:
+        """Filter loaded data before downstream preprocessing."""
+        filtered = df.copy()
+        initial_count = len(filtered)
+        start_date = pd.Timestamp(date_range[0]) if date_range and date_range[0] is not None else None
+        end_date = pd.Timestamp(date_range[1]) if date_range and date_range[1] is not None else None
+
+        if markets:
+            market_set = {int(market) for market in markets}
+            filtered = filtered[filtered['market_id'].isin(market_set)]
+        if grades:
+            grade_set = {str(grade) for grade in grades}
+            filtered = filtered[filtered['grade'].isin(grade_set)]
+        if start_date is not None:
+            filtered = filtered[filtered['date'] >= start_date]
+        if end_date is not None:
+            filtered = filtered[filtered['date'] <= end_date]
+
+        filtered = filtered.sort_values(['date', 'market_id', 'grade']).reset_index(drop=True)
+        self.processing_report['filters'] = {
+            'markets': markets or 'all',
+            'grades': grades or 'all',
+            'date_range': (
+                str(start_date.date()) if start_date is not None else None,
+                str(end_date.date()) if end_date is not None else None,
+            ),
+            'records_before': int(initial_count),
+            'records_after': int(len(filtered)),
+        }
+        return filtered
+
+    def _evaluate_stationarity_series(self,
+                                      prices: np.ndarray,
+                                      test: str = M1_STATIONARITY_TEST,
+                                      significance_level: float = M1_STATIONARITY_SIGNIFICANCE_LEVEL) -> Dict:
+        test_name = str(test).upper()
+        if test_name not in {'ADF', 'KPSS', 'ADF_KPSS'}:
+            raise ValueError(f"Unsupported stationarity test: {test}")
+
+        if len(prices) < 10:
+            return {'stationary': False, 'reason': 'insufficient_data', 'test': test_name}
+
+        outcome: Dict = {'test': test_name}
+        if test_name in {'ADF', 'ADF_KPSS'}:
+            adf_stat, adf_p, *_ = adfuller(prices, autolag='AIC')
+            outcome['adf_statistic'] = float(adf_stat)
+            outcome['adf_p_value'] = float(adf_p)
+            adf_stationary = adf_p < significance_level
+        else:
+            adf_stationary = True
+
+        if test_name in {'KPSS', 'ADF_KPSS'}:
+            kpss_stat, kpss_p, *_ = kpss(prices, regression='c', nlags='auto')
+            outcome['kpss_statistic'] = float(kpss_stat)
+            outcome['kpss_p_value'] = float(kpss_p)
+            kpss_stationary = kpss_p > significance_level
+        else:
+            kpss_stationary = True
+
+        outcome['stationary'] = bool(adf_stationary and kpss_stationary)
+        outcome['significance_level'] = float(significance_level)
+        return outcome
+
     def check_stationarity(self,
                           df: pd.DataFrame,
                           price_col: str = 'price_diff',
                           market_col: str = 'market_id',
                           grade_col: str = 'grade',
-                          test: str = 'adf') -> Dict:
+                          test: str = 'ADF',
+                          significance_level: float = 0.05) -> Dict:
         """
         Check stationarity per market-grade menggunakan ADF atau KPSS test.
         
@@ -725,9 +843,10 @@ class DataPreprocessor:
         Dict dengan hasil per market-grade
         """
         
+        test_name = str(test).upper()
         if self.verbose:
             print(f"\n{'='*70}")
-            print(f"STATIONARITY TESTING ({test.upper()} test)")
+            print(f"STATIONARITY TESTING ({test_name} test)")
             print(f"{'='*70}")
         
         results = {}
@@ -751,33 +870,27 @@ class DataPreprocessor:
                     continue
                 
                 try:
-                    if test == 'adf':
-                        # ADF: H0 = non-stationary, reject if p < 0.05
-                        stat, p_value, _, _, _, _ = adfuller(prices, autolag='AIC')
-                        stationary = p_value < 0.05
-                        test_stat = stat
-                    
-                    elif test == 'kpss':
-                        # KPSS: H0 = stationary, reject if p > 0.05
-                        stat, p_value, _, _ = kpss(prices, regression='c', nlags='auto')
-                        stationary = p_value > 0.05
-                        test_stat = stat
-                    
+                    stationarity = self._evaluate_stationarity_series(
+                        prices,
+                        test=test_name,
+                        significance_level=significance_level,
+                    )
                     results[key] = {
                         'market_id': market,
                         'grade': grade,
-                        'stationary': stationary,
-                        'test': test,
-                        'test_statistic': float(test_stat),
-                        'p_value': float(p_value)
+                        **stationarity,
                     }
-                    
-                    if stationary:
+
+                    if stationarity.get('stationary'):
                         stationary_count += 1
-                    
+
                     if self.verbose:
-                        status = "✓" if stationary else "✗"
-                        print(f"  {key}: {status} (p={p_value:.4f})")
+                        status = "✓" if stationarity.get('stationary') else "✗"
+                        p_value = stationarity.get('adf_p_value', stationarity.get('kpss_p_value'))
+                        if p_value is None:
+                            print(f"  {key}: {status}")
+                        else:
+                            print(f"  {key}: {status} (p={p_value:.4f})")
                 
                 except Exception as e:
                     results[key] = {
@@ -792,9 +905,10 @@ class DataPreprocessor:
             print(f"\nStationary: {stationary_count}/{total_tests}")
         
         self.processing_report['stationarity_test'] = {
-            'test': test,
+            'test': test_name,
             'stationary_count': stationary_count,
-            'total_tests': len(results)
+            'total_tests': len(results),
+            'significance_level': float(significance_level),
         }
         
         return results
@@ -862,6 +976,122 @@ class DataPreprocessor:
         return output_path
 
 
+def _apply_stationarity_driven_differencing(
+    df: pd.DataFrame,
+    preprocessor: DataPreprocessor,
+    stationarity_test: str,
+    stationarity_alpha: float,
+    differencing_mode: str,
+    manual_differencing_order: int,
+    max_differencing_order: int,
+    require_stationarity: bool,
+    source_col: str = 'price_detrended',
+    market_col: str = 'market_id',
+    grade_col: str = 'grade',
+) -> Tuple[pd.DataFrame, Dict]:
+    """Apply assumption-driven differencing per market-grade series."""
+
+    mode = str(differencing_mode).upper()
+    if mode not in set(M1_DIFFERENCING_MODE_OPTIONS):
+        raise ValueError(
+            f"differencing_mode must be one of {M1_DIFFERENCING_MODE_OPTIONS}, got: {differencing_mode}"
+        )
+
+    transformed = df.copy()
+    transformed[M1_MODULE2_PRICE_COLUMN] = np.nan
+    transformed['differencing_order_used'] = 0
+
+    stationarity_report: Dict[str, Dict] = {}
+
+    for market in sorted(transformed[market_col].unique()):
+        for grade in sorted(transformed[grade_col].unique()):
+            mask = (transformed[market_col] == market) & (transformed[grade_col] == grade)
+            if not mask.any():
+                continue
+
+            prices = transformed.loc[mask, source_col].astype(float).values
+            key = f"M{market}_{grade}"
+            test_history: List[Dict] = []
+            order_used = 0
+
+            def _record_state(series_values: np.ndarray, current_order: int) -> Dict:
+                cleaned_values = series_values[~np.isnan(series_values)]
+                if cleaned_values.size == 0:
+                    result = {
+                        'stationary': False,
+                        'reason': 'insufficient_data',
+                        'test': str(stationarity_test).upper(),
+                    }
+                    result['differencing_order'] = int(current_order)
+                    test_history.append(result)
+                    return result
+                result = preprocessor._evaluate_stationarity_series(
+                    cleaned_values,
+                    test=stationarity_test,
+                    significance_level=stationarity_alpha,
+                )
+                result['differencing_order'] = int(current_order)
+                test_history.append(result)
+                return result
+
+            final_series = prices.copy()
+
+            if mode == 'MANUAL':
+                order_used = max(0, int(manual_differencing_order))
+                if order_used > 0:
+                    differenced = np.diff(prices, n=order_used)
+                    final_series = np.concatenate([np.full(order_used, np.nan), differenced])
+                _record_state(final_series, order_used)
+            else:
+                result: Dict = _record_state(final_series, order_used)
+                while (
+                    not result.get('stationary', False)
+                    and order_used < int(max_differencing_order)
+                ):
+                    order_used += 1
+                    differenced = np.diff(prices, n=order_used)
+                    final_series = np.concatenate([np.full(order_used, np.nan), differenced])
+                    result = _record_state(final_series, order_used)
+
+                if require_stationarity and not result.get('stationary', False):
+                    raise ValueError(
+                        f"Series {key} remains non-stationary at differencing order {order_used} "
+                        f"(max allowed: {max_differencing_order}). "
+                        "Increase M1_MAX_DIFFERENCING_ORDER or set M1_REQUIRE_STATIONARITY=False "
+                        "if you want to continue with partially non-stationary series."
+                    )
+
+            expected_length = int(mask.sum())
+            if len(final_series) != expected_length:
+                if len(final_series) < expected_length:
+                    final_series = np.concatenate(
+                        [final_series, np.full(expected_length - len(final_series), np.nan)]
+                    )
+                else:
+                    final_series = final_series[:expected_length]
+            transformed.loc[mask, M1_MODULE2_PRICE_COLUMN] = final_series
+            transformed.loc[mask, 'differencing_order_used'] = int(order_used)
+            stationarity_report[key] = {
+                'market_id': int(market),
+                'grade': str(grade),
+                'differencing_order_used': int(order_used),
+                'final_stationary': test_history[-1].get('stationary', False) if test_history else False,
+                'history': test_history,
+            }
+
+    preprocessor.processing_report['differencing'] = {
+        'mode': mode,
+        'manual_differencing_order': int(manual_differencing_order),
+        'max_differencing_order': int(max_differencing_order),
+    }
+    preprocessor.processing_report['stationarity_workflow'] = {
+        'test': str(stationarity_test).upper(),
+        'significance_level': float(stationarity_alpha),
+        'require_stationarity': bool(require_stationarity),
+    }
+    return transformed, stationarity_report
+
+
 def run_full_preprocessing_pipeline(input_file: Optional[Union[str, Path, Sequence[Union[str, Path]]]], 
                                    output_file: Union[str, Path],
                                    config: Dict = None) -> pd.DataFrame:
@@ -893,68 +1123,83 @@ def run_full_preprocessing_pipeline(input_file: Optional[Union[str, Path, Sequen
         Fully processed data ready untuk Granger causality testing
     """
     
-    # Default config
-    # NOTE (Fix #1 – Kinnear & Mazumdar alignment): Linear detrending followed by
-    # order-1 differencing is redundant — differencing already removes a linear trend.
-    # Applying both is "over-differencing" and can distort the autocorrelation structure
-    # that Granger tests rely on.  The default is therefore 'none' for detrend_method
-    # when differencing_order >= 1.  If you need detrending without differencing, set
-    # detrend_method to 'linear' or 'polynomial' AND differencing_order to 0.
+    # Default config (single source of truth in src/config.py)
     defaults = {
-        'missing_method': 'interpolate',
-        'outlier_method': 'iqr',
-        'outlier_threshold': 1.5,
-        'log_transform': True,
-        'detrend_method': 'none',
-        'differencing_order': 1,
-        'standardize_method': 'zscore',
-        'stationarity_test': 'adf',
-        'duplicate_strategy': 'error',
+        'missing_value_mode': M1_MISSING_VALUE_MODE,
+        'outlier_mode': M1_OUTLIER_MODE,
+        'outlier_threshold': M1_OUTLIER_THRESHOLD,
+        'log_transform': M1_LOG_TRANSFORM,
+        'detrend_method': M1_DETREND_METHOD,
+        'stationarity_test': M1_STATIONARITY_TEST,
+        'stationarity_significance_level': M1_STATIONARITY_SIGNIFICANCE_LEVEL,
+        'require_stationarity': M1_REQUIRE_STATIONARITY,
+        'differencing_mode': M1_DIFFERENCING_MODE,
+        'manual_differencing_order': M1_MANUAL_DIFFERENCING_ORDER,
+        'max_differencing_order': M1_MAX_DIFFERENCING_ORDER,
+        'standardization_enabled': M1_STANDARDIZATION_ENABLED,
+        'standardization_method': M1_STANDARDIZATION_METHOD,
+        'duplicate_strategy': M1_DUPLICATE_STRATEGY,
+        'markets': None,
+        'grades': None,
+        'date_range': None,
     }
     config = {**defaults, **(config or {})}
-    
-    preprocessor = DataPreprocessor(verbose=True)
+
+    preprocessor = DataPreprocessor(verbose=M1_VERBOSE)
     
     # Load
     df = preprocessor.load_pilot_data(
         input_file,
         duplicate_strategy=config['duplicate_strategy'],
     )
-    
-    # Clean
-    df = preprocessor.handle_missing_values(df, method=config['missing_method'])
+
+    # Filter first (before downstream processing)
+    df = preprocessor.filter_data(
+        df,
+        markets=config.get('markets'),
+        grades=config.get('grades'),
+        date_range=config.get('date_range'),
+    )
+    if df.empty:
+        raise ValueError("No data remaining after applying filters.")
+
+    # Clean / transform controls from centralized config
+    df = preprocessor.handle_missing_values(df, method=config['missing_value_mode'])
     df = preprocessor.remove_outliers(
         df, 
-        method=config['outlier_method'],
+        method=config['outlier_mode'],
         threshold=config['outlier_threshold']
     )
-    
-    # Warn about redundant double-detrending (Fix #1)
-    detrend_method = config.get('detrend_method', 'none')
-    differencing_order = config.get('differencing_order', 1)
-    if detrend_method not in ('none', None) and differencing_order >= 1:
-        import warnings as _warnings
-        _warnings.warn(
-            "Both detrend_method='{}' and differencing_order={} are active.  "
-            "Differencing order-1 already removes a linear trend, so applying "
-            "linear detrending beforehand is redundant and may cause "
-            "over-differencing that weakens Granger test power.  "
-            "Consider setting detrend_method='none'.".format(
-                detrend_method, differencing_order),
-            UserWarning, stacklevel=2,
-        )
-    
+
     # Transform
     df = preprocessor.apply_log_transformation(df, apply=config.get('log_transform', True))
     df = preprocessor.detrend_data(df, method=config['detrend_method'])
-    df = preprocessor.apply_differencing(df, order=config['differencing_order'])
-    df = preprocessor.standardize_data(df, method=config['standardize_method'])
-    
-    # Test stationarity
-    stationarity_results = preprocessor.check_stationarity(
-        df,
-        test=config['stationarity_test']
+
+    # Assumption-driven stationarity workflow
+    df, stationarity_results = _apply_stationarity_driven_differencing(
+        df=df,
+        preprocessor=preprocessor,
+        stationarity_test=config['stationarity_test'],
+        stationarity_alpha=float(config['stationarity_significance_level']),
+        differencing_mode=config['differencing_mode'],
+        manual_differencing_order=int(config['manual_differencing_order']),
+        max_differencing_order=int(config['max_differencing_order']),
+        require_stationarity=bool(config['require_stationarity']),
     )
+
+    if config.get('standardization_enabled', True):
+        df = preprocessor.standardize_data(df, method=config['standardization_method'])
+    else:
+        df['price_standardized'] = df[M1_MODULE2_PRICE_COLUMN]
+
+    # Final stationarity audit for downstream series
+    preprocessor.check_stationarity(
+        df,
+        price_col=M1_MODULE2_PRICE_COLUMN,
+        test=config['stationarity_test'],
+        significance_level=float(config['stationarity_significance_level']),
+    )
+    preprocessor.processing_report['stationarity_results'] = stationarity_results
     
     # Save
     output_path = Path(output_file)

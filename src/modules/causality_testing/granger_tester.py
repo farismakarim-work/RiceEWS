@@ -31,10 +31,24 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
+from datetime import date, datetime
 import logging
 import json
 import warnings
 from scipy import stats
+
+from config import (
+    M2_APPLY_BH_CORRECTION,
+    M2_AUTO_SIGNIFICANCE_LEVEL,
+    M2_LAG_CRITERION,
+    M2_LAG_ORDER,
+    M2_LAG_SELECTION_MODE,
+    M2_MAX_LAG,
+    M2_PRICE_COL,
+    M2_SIGNIFICANCE_LEVEL,
+    M2_SIGNIFICANCE_MODE,
+    M2_VERBOSE,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -135,6 +149,8 @@ def _to_json_compatible(value):
         return int(value)
     if isinstance(value, np.floating):
         return float(value)
+    if isinstance(value, (datetime, date, pd.Timestamp)):
+        return value.isoformat()
     return value
 
 
@@ -144,7 +160,7 @@ class GrangerCausalityTester:
     Tests pairwise causal relationships between markets per grade.
     """
 
-    def __init__(self, verbose: bool = True):
+    def __init__(self, verbose: bool = M2_VERBOSE):
         """
         Initialize Granger tester.
 
@@ -210,7 +226,7 @@ class GrangerCausalityTester:
                             df: pd.DataFrame,
                             market_id: int,
                             grade: str,
-                            price_col: str = 'price_diff') -> Optional[np.ndarray]:
+                            price_col: str = M2_PRICE_COL) -> Optional[np.ndarray]:
         """
         Extract dan prepare time series untuk single market-grade.
         """
@@ -286,8 +302,8 @@ class GrangerCausalityTester:
     def select_optimal_lag(self,
                            y_ts: np.ndarray,
                            x_ts: Optional[np.ndarray] = None,
-                           max_lag: int = 8,
-                           criterion: str = 'bic') -> int:
+                           max_lag: int = M2_MAX_LAG,
+                           criterion: str = M2_LAG_CRITERION) -> int:
         """
         Pilih lag optimal menggunakan information criterion (BIC atau AIC).
 
@@ -352,8 +368,8 @@ class GrangerCausalityTester:
     def granger_causality_test(self,
                                y_ts: np.ndarray,
                                x_ts: np.ndarray,
-                               lag_order: int = 4,
-                               significance_level: float = 0.05) -> Dict:
+                               lag_order: int = M2_LAG_ORDER,
+                               significance_level: float = M2_SIGNIFICANCE_LEVEL) -> Dict:
         """
         Perform pairwise Granger causality test.
 
@@ -442,13 +458,13 @@ class GrangerCausalityTester:
     def test_all_pairwise_relationships(self,
                                         df: pd.DataFrame,
                                         grade: str,
-                                        lag_order: int = 4,
-                                        price_col: str = 'price_diff',
+                                        lag_order: int = M2_LAG_ORDER,
+                                        price_col: str = M2_PRICE_COL,
                                         auto_lag: bool = False,
-                                        max_lag: int = 8,
-                                        lag_criterion: str = 'bic',
-                                        significance_level: float = 0.05,
-                                        apply_fdr: bool = True) -> Dict:
+                                        max_lag: int = M2_MAX_LAG,
+                                        lag_criterion: str = M2_LAG_CRITERION,
+                                        significance_level: float = M2_SIGNIFICANCE_LEVEL,
+                                        apply_fdr: bool = M2_APPLY_BH_CORRECTION) -> Dict:
         """
         Test ALL pairwise Granger relationships untuk satu grade.
 
@@ -1138,27 +1154,65 @@ def run_full_granger_analysis(input_file: str,
         Hasil lengkap terintegrasi untuk seluruh node ``(market_id, grade)``.
     """
     if config is None:
-        config = {
-            'lag_order': 4,
-            'price_col': 'price_diff',
-            'significance_level': 0.05,
-            'auto_lag': False,
-            'max_lag': 8,
-            'lag_criterion': 'bic',
-            'apply_fdr': True,
-        }
+        config = {}
+    cfg = {
+        'lag_selection_mode': M2_LAG_SELECTION_MODE,
+        'lag_order': M2_LAG_ORDER,
+        'price_col': M2_PRICE_COL,
+        'significance_mode': M2_SIGNIFICANCE_MODE,
+        'significance_level': M2_SIGNIFICANCE_LEVEL,
+        'auto_significance_level': M2_AUTO_SIGNIFICANCE_LEVEL,
+        'max_lag': M2_MAX_LAG,
+        'lag_criterion': M2_LAG_CRITERION,
+        'apply_fdr': M2_APPLY_BH_CORRECTION,
+        'markets': None,
+        'grades': None,
+        'date_range': None,
+        **config,
+    }
 
-    # Berikan nilai default untuk kunci opsional agar tidak KeyError
-    lag_order = int(config.get('lag_order', 4))
-    price_col = str(config.get('price_col', 'price_diff'))
-    significance_level = float(config.get('significance_level', 0.05))
-    auto_lag = bool(config.get('auto_lag', False))
-    max_lag = int(config.get('max_lag', 8))
-    lag_criterion = str(config.get('lag_criterion', 'bic'))
-    apply_fdr = bool(config.get('apply_fdr', True))
+    lag_selection_mode = str(cfg.get('lag_selection_mode', M2_LAG_SELECTION_MODE)).upper()
+    if lag_selection_mode not in {'AUTO', 'MANUAL'}:
+        raise ValueError("lag_selection_mode must be 'AUTO' or 'MANUAL'")
+    auto_lag = lag_selection_mode == 'AUTO'
+    lag_order = int(cfg.get('lag_order', M2_LAG_ORDER))
+    price_col = str(cfg.get('price_col', M2_PRICE_COL))
 
-    tester = GrangerCausalityTester(verbose=True)
+    significance_mode = str(cfg.get('significance_mode', M2_SIGNIFICANCE_MODE)).upper()
+    if significance_mode not in {'AUTO', 'MANUAL'}:
+        raise ValueError("significance_mode must be 'AUTO' or 'MANUAL'")
+    if significance_mode == 'AUTO':
+        significance_level = float(cfg.get('auto_significance_level', M2_AUTO_SIGNIFICANCE_LEVEL))
+    else:
+        significance_level = float(cfg.get('significance_level', M2_SIGNIFICANCE_LEVEL))
+
+    max_lag = int(cfg.get('max_lag', M2_MAX_LAG))
+    lag_criterion = str(cfg.get('lag_criterion', M2_LAG_CRITERION))
+    apply_fdr = bool(cfg.get('apply_fdr', M2_APPLY_BH_CORRECTION))
+
+    tester = GrangerCausalityTester(verbose=M2_VERBOSE)
     df = tester.load_preprocessed_data(input_file)
+
+    # Optional subset filters (applied before downstream analysis)
+    markets = cfg.get('markets')
+    grades = cfg.get('grades')
+    date_range = cfg.get('date_range')
+    if markets:
+        market_set = {int(market) for market in markets}
+        df = df[df['market_id'].isin(market_set)]
+    if grades:
+        grade_set = {str(grade) for grade in grades}
+        df = df[df['grade'].isin(grade_set)]
+    if date_range:
+        start_date, end_date = date_range
+        if start_date is not None:
+            df = df[df['date'] >= start_date]
+        if end_date is not None:
+            df = df[df['date'] <= end_date]
+
+    df = df.sort_values(['date', 'market_id', 'grade']).reset_index(drop=True)
+    if df.empty:
+        raise ValueError("No records remain for Module 2 after applying filters.")
 
     node_frame = (
         df[['market_id', 'grade']]
@@ -1250,7 +1304,7 @@ def run_full_granger_analysis(input_file: str,
         'out_degrees': out_degrees,
         'in_degrees': in_degrees,
         'market_leaders': market_leaders,
-        'config': config,
+        'config': cfg,
     }
 
     if tester.verbose:

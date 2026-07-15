@@ -70,3 +70,34 @@ def test_module2_serializes_granger_flags_as_booleans(module2_outputs):
     df = pd.read_csv(pairwise_csv)
     assert {"grade_source", "grade_target", "source_node", "target_node"}.issubset(df.columns)
     assert ((df["grade_source"] != df["grade_target"]).any())
+
+
+def test_module2_supports_subset_filters_and_config_modes(tmp_path):
+    module1_dir = tmp_path / "module_01"
+    module2_dir = tmp_path / "module_02"
+    preprocessed_csv = module1_dir / "preprocessed_pilot_data.csv"
+
+    run_full_preprocessing_pipeline(
+        input_file=PILOT_DATASET,
+        output_file=preprocessed_csv,
+        config={"detrend_method": "none", "duplicate_strategy": "error"},
+    )
+
+    results = run_full_granger_analysis(
+        input_file=str(preprocessed_csv),
+        output_dir=str(module2_dir),
+        config={
+            "lag_selection_mode": "AUTO",
+            "max_lag": 3,
+            "significance_mode": "AUTO",
+            "apply_fdr": True,
+            "markets": [101, 102],
+            "grades": ["low1"],
+            "date_range": (pd.Timestamp("2020-01-01"), pd.Timestamp("2022-12-31")),
+        },
+    )
+
+    assert results["config"]["lag_selection_mode"] == "AUTO"
+    assert results["config"]["significance_mode"] == "AUTO"
+    assert all(node["grade"] == "low1" for node in results["nodes"])
+    assert {node["market_id"] for node in results["nodes"]}.issubset({101, 102})

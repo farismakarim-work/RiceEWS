@@ -1,4 +1,5 @@
 import sys
+import subprocess
 from pathlib import Path
 
 import pandas as pd
@@ -111,3 +112,62 @@ def test_module1_duplicate_handling_strategies(tmp_path):
     assert first_price != last_price
     assert first_price == first.iloc[0]["price"]
     assert last_price == second.iloc[0]["price"]
+
+
+def test_module1_filters_applied_before_preprocessing(tmp_path):
+    dataset_path = tmp_path / "filter_input.xlsx"
+    _sample_raw_dataset().to_excel(dataset_path, index=False)
+
+    output_file = tmp_path / "module_01" / "filtered.csv"
+    filtered = run_full_preprocessing_pipeline(
+        input_file=dataset_path,
+        output_file=output_file,
+        config={
+            "duplicate_strategy": "error",
+            "markets": [101],
+            "grades": ["low1"],
+            "date_range": (pd.Timestamp("2024-01-03"), pd.Timestamp("2024-01-06")),
+        },
+    )
+
+    assert set(filtered["market_id"]) == {101}
+    assert set(filtered["grade"]) == {"low1"}
+    assert filtered["date"].min() >= pd.Timestamp("2024-01-03")
+    assert filtered["date"].max() <= pd.Timestamp("2024-01-06")
+
+
+def test_run_pipeline_module1_reruns_and_overwrites_by_default(tmp_path):
+    raw_dir = tmp_path / "raw"
+    output_dir = tmp_path / "processed"
+    raw_dir.mkdir()
+
+    dataset_path = raw_dir / "input.xlsx"
+    _sample_raw_dataset().to_excel(dataset_path, index=False)
+
+    command = [
+        sys.executable,
+        str(REPO_ROOT / "run_pipeline.py"),
+        "--module",
+        "1",
+        "--input",
+        str(raw_dir),
+        "--output",
+        str(output_dir),
+    ]
+
+    first = subprocess.run(command, cwd=REPO_ROOT, check=False, capture_output=True, text=True)
+    assert first.returncode == 0, first.stderr
+
+    output_file = output_dir / "module_01" / "preprocessed_pilot_data.csv"
+    assert output_file.exists()
+    first_mtime = output_file.stat().st_mtime_ns
+    first_df = pd.read_csv(output_file)
+
+    second = subprocess.run(command, cwd=REPO_ROOT, check=False, capture_output=True, text=True)
+    assert second.returncode == 0, second.stderr
+    second_mtime = output_file.stat().st_mtime_ns
+    second_df = pd.read_csv(output_file)
+
+    assert second_mtime > first_mtime
+    assert len(second_df) == len(first_df)
+    assert "Skipping" not in second.stdout
