@@ -34,6 +34,7 @@ import warnings
 import json
 
 from config import (
+    MODULE_01_STATIONARITY_REPORT_FILENAME,
     RAW_DATA_DIR,
     RAW_INPUT_FILE_PATTERN,
     M1_DIFFERENCING_MODE,
@@ -41,22 +42,32 @@ from config import (
     M1_DUPLICATE_STRATEGY,
     M1_LOG_TRANSFORM,
     M1_MAX_DIFFERENCING_ORDER,
+    M1_MIN_OBSERVATIONS,
     M1_MANUAL_DIFFERENCING_ORDER,
     M1_MISSING_VALUE_MODE,
     M1_MODULE2_PRICE_COLUMN,
     M1_OUTLIER_MODE,
     M1_OUTLIER_THRESHOLD,
     M1_REQUIRE_STATIONARITY,
+    M1_SKIP_ALL_NAN_SERIES,
+    M1_SKIP_CONSTANT_SERIES,
+    M1_SKIP_SHORT_SERIES,
+    M1_SKIP_ZERO_VARIANCE_SERIES,
     M1_STANDARDIZATION_ENABLED,
     M1_STANDARDIZATION_METHOD,
     M1_STATIONARITY_SIGNIFICANCE_LEVEL,
     M1_STATIONARITY_TEST,
     M1_DETREND_METHOD,
     M1_VERBOSE,
+    M1_VERBOSE_STATIONARITY,
 )
 
 warnings.filterwarnings('ignore')
 logger = logging.getLogger(__name__)
+
+STATUS_PASS = "PASS"
+STATUS_FAIL = "FAIL"
+STATUS_NOT_TESTABLE = "NOT TESTABLE"
 
 
 def _normalize_input_files(
@@ -104,6 +115,12 @@ class DataPreprocessor:
         self.verbose = verbose
         self.logger = logger
         self.processing_report = {}
+        self.min_observations = int(M1_MIN_OBSERVATIONS)
+        self.skip_short_series = bool(M1_SKIP_SHORT_SERIES)
+        self.skip_constant_series = bool(M1_SKIP_CONSTANT_SERIES)
+        self.skip_zero_variance_series = bool(M1_SKIP_ZERO_VARIANCE_SERIES)
+        self.skip_all_nan_series = bool(M1_SKIP_ALL_NAN_SERIES)
+        self.verbose_stationarity = bool(M1_VERBOSE_STATIONARITY)
     
     def load_pilot_data(
         self,
@@ -786,6 +803,39 @@ class DataPreprocessor:
         }
         return filtered
 
+    def _validate_stationarity_input(self, prices: np.ndarray) -> Dict:
+        """Validate one series before stationarity tests.
+
+        Returns keys:
+        ``clean_values``, ``observations``, ``unique_values``, ``variance``,
+        ``is_testable``, and ``reason``.
+        """
+
+        clean_values = np.asarray(prices, dtype=float)
+        clean_values = clean_values[~np.isnan(clean_values)]
+        observations = int(clean_values.size)
+        unique_values = int(np.unique(clean_values).size) if observations > 0 else 0
+        variance = float(np.var(clean_values)) if observations > 0 else np.nan
+
+        reason: Optional[str] = None
+        if observations == 0 and self.skip_all_nan_series:
+            reason = "All NaN"
+        elif observations < int(self.min_observations) and self.skip_short_series:
+            reason = "Insufficient observations"
+        elif unique_values <= 1 and self.skip_constant_series:
+            reason = "Constant series"
+        elif variance <= 0 and self.skip_zero_variance_series:
+            reason = "Zero variance"
+
+        return {
+            'clean_values': clean_values,
+            'observations': observations,
+            'unique_values': unique_values,
+            'variance': variance,
+            'is_testable': reason is None,
+            'reason': reason,
+        }
+
     def _evaluate_stationarity_series(self,
                                       prices: np.ndarray,
                                       test: str = M1_STATIONARITY_TEST,
@@ -794,27 +844,59 @@ class DataPreprocessor:
         if test_name not in {'ADF', 'KPSS', 'ADF_KPSS'}:
             raise ValueError(f"Unsupported stationarity test: {test}")
 
-        if len(prices) < 10:
-            return {'stationary': False, 'reason': 'insufficient_data', 'test': test_name}
+        validation = self._validate_stationarity_input(prices)
+        outcome: Dict = {
+            'test': test_name,
+            'observations': int(validation['observations']),
+            'unique_values': int(validation['unique_values']),
+            'variance': float(validation['variance']) if validation['observations'] > 0 else np.nan,
+            'adf_p_value': None,
+            'p_value': None,
+            'reason': None,
+        }
 
-        outcome: Dict = {'test': test_name}
-        if test_name in {'ADF', 'ADF_KPSS'}:
-            adf_stat, adf_p, *_ = adfuller(prices, autolag='AIC')
-            outcome['adf_statistic'] = float(adf_stat)
-            outcome['adf_p_value'] = float(adf_p)
-            adf_stationary = adf_p < significance_level
-        else:
-            adf_stationary = True
+        if not validation['is_testable']:
+            outcome['status'] = STATUS_NOT_TESTABLE
+            outcome['stationary'] = False
+            outcome['eligible_for_pwgc'] = False
+            outcome['reason'] = validation['reason']
+            outcome['significance_level'] = float(significance_level)
+            return outcome
 
-        if test_name in {'KPSS', 'ADF_KPSS'}:
-            kpss_stat, kpss_p, *_ = kpss(prices, regression='c', nlags='auto')
-            outcome['kpss_statistic'] = float(kpss_stat)
-            outcome['kpss_p_value'] = float(kpss_p)
-            kpss_stationary = kpss_p > significance_level
-        else:
-            kpss_stationary = True
+        clean_values = validation['clean_values']
+        try:
+            if test_name in {'ADF', 'ADF_KPSS'}:
+                adf_stat, adf_p, *_ = adfuller(clean_values, autolag='AIC')
+                outcome['adf_statistic'] = float(adf_stat)
+                outcome['adf_p_value'] = float(adf_p)
+                outcome['p_value'] = float(adf_p)
+                adf_stationary = adf_p < significance_level
+            else:
+                adf_stationary = True
 
-        outcome['stationary'] = bool(adf_stationary and kpss_stationary)
+            if test_name in {'KPSS', 'ADF_KPSS'}:
+                kpss_stat, kpss_p, *_ = kpss(clean_values, regression='c', nlags='auto')
+                outcome['kpss_statistic'] = float(kpss_stat)
+                outcome['kpss_p_value'] = float(kpss_p)
+                if outcome['p_value'] is None:
+                    outcome['p_value'] = float(kpss_p)
+                kpss_stationary = kpss_p > significance_level
+            else:
+                kpss_stationary = True
+        except Exception as exc:  # noqa: BLE001
+            self.logger.debug("Stationarity estimation failed for %s", test_name, exc_info=True)
+            outcome['status'] = STATUS_NOT_TESTABLE
+            outcome['stationary'] = False
+            outcome['eligible_for_pwgc'] = False
+            outcome['reason'] = f"{test_name} could not be estimated: {type(exc).__name__}: {exc}"
+            outcome['significance_level'] = float(significance_level)
+            return outcome
+
+        stationary = bool(adf_stationary and kpss_stationary)
+        outcome['stationary'] = stationary
+        outcome['status'] = STATUS_PASS if stationary else STATUS_FAIL
+        outcome['eligible_for_pwgc'] = True
+        outcome['reason'] = ""
         outcome['significance_level'] = float(significance_level)
         return outcome
 
@@ -850,8 +932,12 @@ class DataPreprocessor:
             print(f"{'='*70}")
         
         results = {}
-        stationary_count = 0
-        
+        status_counts = {
+            STATUS_PASS: 0,
+            STATUS_FAIL: 0,
+            STATUS_NOT_TESTABLE: 0,
+        }
+
         for market in sorted(df[market_col].unique()):
             for grade in sorted(df[grade_col].unique()):
                 mask = (df[market_col] == market) & (df[grade_col] == grade)
@@ -859,54 +945,44 @@ class DataPreprocessor:
                 
                 key = f"M{market}_{grade}"
                 
-                if len(prices) < 10:
-                    results[key] = {
-                        'market_id': market,
-                        'grade': grade,
-                        'stationary': False,
-                        'reason': 'insufficient_data',
-                        'p_value': None
-                    }
-                    continue
-                
-                try:
-                    stationarity = self._evaluate_stationarity_series(
-                        prices,
-                        test=test_name,
-                        significance_level=significance_level,
-                    )
-                    results[key] = {
-                        'market_id': market,
-                        'grade': grade,
-                        **stationarity,
-                    }
+                stationarity = self._evaluate_stationarity_series(
+                    prices,
+                    test=test_name,
+                    significance_level=significance_level,
+                )
+                results[key] = {
+                    'series': key,
+                    'market_id': int(market),
+                    'grade': str(grade),
+                    **stationarity,
+                }
+                status = stationarity.get('status', STATUS_FAIL)
+                status_counts[status] = status_counts.get(status, 0) + 1
 
-                    if stationarity.get('stationary'):
-                        stationary_count += 1
+                if self.verbose and self.verbose_stationarity:
+                    p_value = stationarity.get('adf_p_value')
+                    reason = stationarity.get('reason') or "-"
+                    if p_value is None or pd.isna(p_value):
+                        print(f"  {key}: {status} | eligible={stationarity.get('eligible_for_pwgc')} | reason={reason}")
+                    else:
+                        print(
+                            f"  {key}: {status} | eligible={stationarity.get('eligible_for_pwgc')} "
+                            f"| adf_p={p_value:.4f} | reason={reason}"
+                        )
 
-                    if self.verbose:
-                        status = "✓" if stationarity.get('stationary') else "✗"
-                        p_value = stationarity.get('adf_p_value', stationarity.get('kpss_p_value'))
-                        if p_value is None:
-                            print(f"  {key}: {status}")
-                        else:
-                            print(f"  {key}: {status} (p={p_value:.4f})")
-                
-                except Exception as e:
-                    results[key] = {
-                        'market_id': market,
-                        'grade': grade,
-                        'stationary': False,
-                        'error': str(e)
-                    }
-        
         if self.verbose:
             total_tests = len(results)
-            print(f"\nStationary: {stationary_count}/{total_tests}")
-        
+            print(
+                f"\nPASS: {status_counts[STATUS_PASS]}/{total_tests} | "
+                f"FAIL: {status_counts[STATUS_FAIL]} | "
+                f"NOT TESTABLE: {status_counts[STATUS_NOT_TESTABLE]}"
+            )
+
         self.processing_report['stationarity_test'] = {
             'test': test_name,
-            'stationary_count': stationary_count,
+            'pass_count': int(status_counts[STATUS_PASS]),
+            'fail_count': int(status_counts[STATUS_FAIL]),
+            'not_testable_count': int(status_counts[STATUS_NOT_TESTABLE]),
             'total_tests': len(results),
             'significance_level': float(significance_level),
         }
@@ -976,6 +1052,100 @@ class DataPreprocessor:
         return output_path
 
 
+def _format_summary_table(rows: List[Tuple[str, Union[int, str]]]) -> str:
+    """Format key-value rows into an ASCII table."""
+    if not rows:
+        rows = [("No data available", "N/A")]
+    label_width = max(len(label) for label, _ in rows)
+    value_width = max(len(str(value)) for _, value in rows)
+    border = f"+-{'-' * label_width}-+-{'-' * value_width}-+"
+    lines = [border]
+    for label, value in rows:
+        lines.append(f"| {label:<{label_width}} | {str(value):>{value_width}} |")
+    lines.append(border)
+    return "\n".join(lines)
+
+
+def _build_stationarity_report_dataframe(stationarity_results: Dict[str, Dict]) -> pd.DataFrame:
+    """Build the stationarity report DataFrame from per-series result dictionaries."""
+    rows: List[Dict] = []
+    for series_key in sorted(stationarity_results.keys()):
+        result = stationarity_results[series_key]
+        rows.append(
+            {
+                'Series': series_key,
+                'Market': int(result.get('market_id')),
+                'Grade': str(result.get('grade')),
+                'Observations': int(result.get('observations', 0)),
+                'Unique Values': int(result.get('unique_values', 0)),
+                'Variance': float(result.get('variance')) if result.get('observations', 0) > 0 else np.nan,
+                'Status': result.get('status', STATUS_NOT_TESTABLE),
+                'Eligible for PWGC': 'YES' if result.get('eligible_for_pwgc') else 'NO',
+                'ADF p-value': result.get('adf_p_value'),
+                'Reason': result.get('reason', ''),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _print_module1_summary(stationarity_report_df: pd.DataFrame) -> None:
+    """Print the Module 1 stationarity and PWGC eligibility summary tables."""
+    total_series = int(len(stationarity_report_df))
+    eligible_count = int((stationarity_report_df['Eligible for PWGC'] == 'YES').sum())
+    not_eligible_count = int((stationarity_report_df['Eligible for PWGC'] == 'NO').sum())
+    status_counts = stationarity_report_df['Status'].value_counts()
+    not_testable_reasons = (
+        stationarity_report_df[stationarity_report_df['Status'] == STATUS_NOT_TESTABLE]['Reason']
+        .replace('', 'No reason provided')
+        .value_counts()
+    )
+
+    print("\n" + "=" * 70)
+    print("MODULE 1 SUMMARY")
+    print("=" * 70)
+    print(
+        _format_summary_table(
+            [
+                ("Total Time Series", total_series),
+                ("Successfully Processed", eligible_count),
+                ("Eligible for PWGC", eligible_count),
+                ("Not Eligible", not_eligible_count),
+            ]
+        )
+    )
+    print("\nStationarity Results")
+    print(
+        _format_summary_table(
+            [
+                (STATUS_PASS, int(status_counts.get(STATUS_PASS, 0))),
+                (STATUS_FAIL, int(status_counts.get(STATUS_FAIL, 0))),
+                (STATUS_NOT_TESTABLE, int(status_counts.get(STATUS_NOT_TESTABLE, 0))),
+            ]
+        )
+    )
+    if not not_testable_reasons.empty:
+        print("\nReasons for NOT TESTABLE")
+        print(_format_summary_table([(reason, int(count)) for reason, count in not_testable_reasons.items()]))
+    print("=" * 70)
+
+
+def _filter_pwgc_eligible_data(
+    df: pd.DataFrame,
+    stationarity_report_df: pd.DataFrame,
+    market_col: str = 'market_id',
+    grade_col: str = 'grade',
+) -> pd.DataFrame:
+    """Keep only market-grade series marked as PWGC-eligible in the report."""
+    eligible_pairs = stationarity_report_df[stationarity_report_df['Eligible for PWGC'] == 'YES'][['Market', 'Grade']]
+    if eligible_pairs.empty:
+        return df.head(0).copy()
+    eligible_pairs = eligible_pairs.rename(columns={'Market': market_col, 'Grade': grade_col})
+    eligible_pairs[market_col] = eligible_pairs[market_col].astype(int)
+    eligible_pairs[grade_col] = eligible_pairs[grade_col].astype(str)
+    filtered = df.merge(eligible_pairs.drop_duplicates(), on=[market_col, grade_col], how='inner')
+    return filtered.sort_values(['date', market_col, grade_col]).reset_index(drop=True)
+
+
 def _apply_stationarity_driven_differencing(
     df: pd.DataFrame,
     preprocessor: DataPreprocessor,
@@ -1015,18 +1185,8 @@ def _apply_stationarity_driven_differencing(
             order_used = 0
 
             def _record_state(series_values: np.ndarray, current_order: int) -> Dict:
-                cleaned_values = series_values[~np.isnan(series_values)]
-                if cleaned_values.size == 0:
-                    result = {
-                        'stationary': False,
-                        'reason': 'insufficient_data',
-                        'test': str(stationarity_test).upper(),
-                    }
-                    result['differencing_order'] = int(current_order)
-                    test_history.append(result)
-                    return result
                 result = preprocessor._evaluate_stationarity_series(
-                    cleaned_values,
+                    series_values,
                     test=stationarity_test,
                     significance_level=stationarity_alpha,
                 )
@@ -1037,15 +1197,20 @@ def _apply_stationarity_driven_differencing(
             final_series = prices.copy()
 
             if mode == 'MANUAL':
-                order_used = max(0, int(manual_differencing_order))
-                if order_used > 0:
-                    differenced = np.diff(prices, n=order_used)
-                    final_series = np.concatenate([np.full(order_used, np.nan), differenced])
-                _record_state(final_series, order_used)
+                baseline_result = _record_state(final_series, order_used)
+                if baseline_result.get('status') == STATUS_NOT_TESTABLE:
+                    order_used = 0
+                    final_series = prices.copy()
+                else:
+                    order_used = max(0, int(manual_differencing_order))
+                    if order_used > 0:
+                        differenced = np.diff(prices, n=order_used)
+                        final_series = np.concatenate([np.full(order_used, np.nan), differenced])
+                    _record_state(final_series, order_used)
             else:
                 result: Dict = _record_state(final_series, order_used)
                 while (
-                    not result.get('stationary', False)
+                    result.get('status') == STATUS_FAIL
                     and order_used < int(max_differencing_order)
                 ):
                     order_used += 1
@@ -1053,7 +1218,11 @@ def _apply_stationarity_driven_differencing(
                     final_series = np.concatenate([np.full(order_used, np.nan), differenced])
                     result = _record_state(final_series, order_used)
 
-                if require_stationarity and not result.get('stationary', False):
+                if result.get('status') == STATUS_NOT_TESTABLE:
+                    order_used = 0
+                    final_series = prices.copy()
+
+                if require_stationarity and result.get('status') == STATUS_FAIL:
                     raise ValueError(
                         f"Series {key} remains non-stationary at differencing order {order_used} "
                         f"(max allowed: {max_differencing_order}). "
@@ -1071,11 +1240,16 @@ def _apply_stationarity_driven_differencing(
                     final_series = final_series[:expected_length]
             transformed.loc[mask, M1_MODULE2_PRICE_COLUMN] = final_series
             transformed.loc[mask, 'differencing_order_used'] = int(order_used)
+            final_result = test_history[-1] if test_history else {}
             stationarity_report[key] = {
                 'market_id': int(market),
                 'grade': str(grade),
                 'differencing_order_used': int(order_used),
-                'final_stationary': test_history[-1].get('stationary', False) if test_history else False,
+                'status': final_result.get('status', STATUS_NOT_TESTABLE),
+                'eligible_for_pwgc': bool(final_result.get('eligible_for_pwgc', False)),
+                'adf_p_value': final_result.get('adf_p_value'),
+                'reason': final_result.get('reason', ''),
+                'final_stationary': bool(final_result.get('stationary', False)),
                 'history': test_history,
             }
 
@@ -1136,6 +1310,12 @@ def run_full_preprocessing_pipeline(input_file: Optional[Union[str, Path, Sequen
         'differencing_mode': M1_DIFFERENCING_MODE,
         'manual_differencing_order': M1_MANUAL_DIFFERENCING_ORDER,
         'max_differencing_order': M1_MAX_DIFFERENCING_ORDER,
+        'min_observations': M1_MIN_OBSERVATIONS,
+        'skip_short_series': M1_SKIP_SHORT_SERIES,
+        'skip_constant_series': M1_SKIP_CONSTANT_SERIES,
+        'skip_zero_variance_series': M1_SKIP_ZERO_VARIANCE_SERIES,
+        'skip_all_nan_series': M1_SKIP_ALL_NAN_SERIES,
+        'verbose_stationarity': M1_VERBOSE_STATIONARITY,
         'standardization_enabled': M1_STANDARDIZATION_ENABLED,
         'standardization_method': M1_STANDARDIZATION_METHOD,
         'duplicate_strategy': M1_DUPLICATE_STRATEGY,
@@ -1146,6 +1326,12 @@ def run_full_preprocessing_pipeline(input_file: Optional[Union[str, Path, Sequen
     config = {**defaults, **(config or {})}
 
     preprocessor = DataPreprocessor(verbose=M1_VERBOSE)
+    preprocessor.min_observations = int(config['min_observations'])
+    preprocessor.skip_short_series = bool(config['skip_short_series'])
+    preprocessor.skip_constant_series = bool(config['skip_constant_series'])
+    preprocessor.skip_zero_variance_series = bool(config['skip_zero_variance_series'])
+    preprocessor.skip_all_nan_series = bool(config['skip_all_nan_series'])
+    preprocessor.verbose_stationarity = bool(config['verbose_stationarity'])
     
     # Load
     df = preprocessor.load_pilot_data(
@@ -1193,24 +1379,40 @@ def run_full_preprocessing_pipeline(input_file: Optional[Union[str, Path, Sequen
         df['price_standardized'] = df[M1_MODULE2_PRICE_COLUMN]
 
     # Final stationarity audit for downstream series
-    preprocessor.check_stationarity(
+    final_stationarity_results = preprocessor.check_stationarity(
         df,
         price_col=M1_MODULE2_PRICE_COLUMN,
         test=config['stationarity_test'],
         significance_level=float(config['stationarity_significance_level']),
     )
     preprocessor.processing_report['stationarity_results'] = stationarity_results
+
+    stationarity_report_df = _build_stationarity_report_dataframe(final_stationarity_results)
+    stationarity_report_path = Path(output_file).parent / MODULE_01_STATIONARITY_REPORT_FILENAME
+    stationarity_report_path.parent.mkdir(parents=True, exist_ok=True)
+    stationarity_report_df.to_csv(stationarity_report_path, index=False)
+    preprocessor.processing_report['stationarity_report_csv'] = str(stationarity_report_path)
+
+    df_for_module2 = _filter_pwgc_eligible_data(df, stationarity_report_df)
+    preprocessor.processing_report['pwgc_eligibility'] = {
+        'eligible_series': int((stationarity_report_df['Eligible for PWGC'] == 'YES').sum()),
+        'not_eligible_series': int((stationarity_report_df['Eligible for PWGC'] == 'NO').sum()),
+        'total_series': int(len(stationarity_report_df)),
+        'output_records': int(len(df_for_module2)),
+    }
+
+    _print_module1_summary(stationarity_report_df)
     
     # Save
     output_path = Path(output_file)
     output_format = 'excel' if output_path.suffix.lower() == '.xlsx' else 'csv'
-    preprocessor.save_processed_data(df, str(output_path), output_format=output_format)
+    preprocessor.save_processed_data(df_for_module2, str(output_path), output_format=output_format)
     
     print(f"\n{'='*70}")
     print("PREPROCESSING COMPLETE - Ready for Granger Causality Testing")
     print(f"{'='*70}")
     
-    return df
+    return df_for_module2
 
 
 if __name__ == "__main__":
