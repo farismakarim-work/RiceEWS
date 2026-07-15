@@ -175,7 +175,7 @@ def test_run_pipeline_module1_reruns_and_overwrites_by_default(tmp_path):
     assert "Skipping" not in second.stdout
 
 
-def test_module1_stationarity_validation_skips_invalid_series_without_adf(monkeypatch):
+def test_module1_pre_validation_skips_adf_for_not_testable_series(monkeypatch):
     preprocessor = DataPreprocessor(verbose=False)
     adf_calls = {"count": 0}
 

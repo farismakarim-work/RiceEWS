@@ -804,7 +804,12 @@ class DataPreprocessor:
         return filtered
 
     def _validate_stationarity_input(self, prices: np.ndarray) -> Dict:
-        """Validate one series before running stationarity tests."""
+        """Validate one series before stationarity tests.
+
+        Returns keys:
+        ``clean_values``, ``observations``, ``unique_values``, ``variance``,
+        ``is_testable``, and ``reason``.
+        """
 
         clean_values = np.asarray(prices, dtype=float)
         clean_values = clean_values[~np.isnan(clean_values)]
@@ -879,6 +884,7 @@ class DataPreprocessor:
             else:
                 kpss_stationary = True
         except Exception as exc:  # noqa: BLE001
+            self.logger.debug("Stationarity estimation failed for %s", test_name, exc_info=True)
             outcome['status'] = STATUS_NOT_TESTABLE
             outcome['stationary'] = False
             outcome['eligible_for_pwgc'] = False
@@ -1047,6 +1053,7 @@ class DataPreprocessor:
 
 
 def _format_summary_table(rows: List[Tuple[str, Union[int, str]]]) -> str:
+    """Format key-value rows into an ASCII table."""
     if not rows:
         rows = [("No data available", 0)]
     label_width = max(len(label) for label, _ in rows)
@@ -1060,6 +1067,7 @@ def _format_summary_table(rows: List[Tuple[str, Union[int, str]]]) -> str:
 
 
 def _build_stationarity_report_dataframe(stationarity_results: Dict[str, Dict]) -> pd.DataFrame:
+    """Build the stationarity report DataFrame from per-series result dictionaries."""
     rows: List[Dict] = []
     for series_key in sorted(stationarity_results.keys()):
         result = stationarity_results[series_key]
@@ -1081,6 +1089,7 @@ def _build_stationarity_report_dataframe(stationarity_results: Dict[str, Dict]) 
 
 
 def _print_module1_summary(stationarity_report_df: pd.DataFrame) -> None:
+    """Print the Module 1 stationarity and PWGC eligibility summary tables."""
     total_series = int(len(stationarity_report_df))
     eligible_count = int((stationarity_report_df['Eligible for PWGC'] == 'YES').sum())
     not_eligible_count = int((stationarity_report_df['Eligible for PWGC'] == 'NO').sum())
@@ -1126,6 +1135,7 @@ def _filter_pwgc_eligible_data(
     market_col: str = 'market_id',
     grade_col: str = 'grade',
 ) -> pd.DataFrame:
+    """Keep only market-grade series marked as PWGC-eligible in the report."""
     eligible_pairs = stationarity_report_df[stationarity_report_df['Eligible for PWGC'] == 'YES'][['Market', 'Grade']]
     if eligible_pairs.empty:
         return df.head(0).copy()
