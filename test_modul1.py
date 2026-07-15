@@ -225,6 +225,25 @@ def test_module1_stationarity_status_pass_and_fail(monkeypatch):
     assert fail_result["adf_p_value"] == pytest.approx(0.2)
 
 
+def test_module1_min_observations_threshold(monkeypatch):
+    preprocessor = DataPreprocessor(verbose=False)
+    preprocessor.min_observations = 5
+
+    def _fake_adf(values, autolag="AIC"):
+        return (-3.0, 0.2, 0, len(values), {}, 0.0)
+
+    monkeypatch.setattr(data_preprocessor, "adfuller", _fake_adf)
+
+    exact_threshold = preprocessor._evaluate_stationarity_series(np.arange(1, 6, dtype=float))
+    below_threshold = preprocessor._evaluate_stationarity_series(np.arange(1, 5, dtype=float))
+
+    assert exact_threshold["status"] == "FAIL"
+    assert exact_threshold["eligible_for_pwgc"] is True
+    assert below_threshold["status"] == "NOT TESTABLE"
+    assert below_threshold["eligible_for_pwgc"] is False
+    assert below_threshold["reason"] == "Insufficient observations"
+
+
 def test_module1_stationarity_report_excludes_not_testable(tmp_path, monkeypatch):
     dates = pd.date_range("2024-01-01", periods=12, freq="D")
     rows = []

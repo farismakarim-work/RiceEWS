@@ -1048,7 +1048,7 @@ class DataPreprocessor:
 
 def _format_summary_table(rows: List[Tuple[str, Union[int, str]]]) -> str:
     if not rows:
-        return "+----------------------+-------+\n| No data available    |     0 |\n+----------------------+-------+"
+        rows = [("No data available", 0)]
     label_width = max(len(label) for label, _ in rows)
     value_width = max(len(str(value)) for _, value in rows)
     border = f"+-{'-' * label_width}-+-{'-' * value_width}-+"
