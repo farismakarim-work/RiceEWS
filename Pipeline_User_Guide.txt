@@ -1,453 +1,139 @@
 ============================================================
-  RiceEWS — Rice Price Early Warning System
-  Pipeline User Guide
-  Version 1.0.0
+RiceEWS — Pipeline User Guide
 ============================================================
 
-TABLE OF CONTENTS
------------------
-  1.  Introduction
-  2.  System Requirements
-  3.  Installation
-  4.  Repository Layout
-  5.  Quick Start
-  6.  Running the Full Pipeline
-  7.  Running Individual Modules
-  8.  Command-Line Reference (run_pipeline.py)
-  9.  Input Data Format
-  10. Output Files
-  11. Configuration Options
-  12. Troubleshooting
-  13. Scientific Background
-
+1) CONFIGURATION PHILOSOPHY
 ------------------------------------------------------------
-1. INTRODUCTION
+All configurable behavior is centralized in:
+
+    src/config.py
+
+Do not configure runtime behavior in runner scripts or module files.
+
+Logical config sections:
+- Project
+- Input
+- Output
+- Execution
+- Module 1
+- Module 2
+- Module 3
+- Visualization
+- Logging
+- CLI
+
+
+2) AUTO / MANUAL MODES
 ------------------------------------------------------------
+Configuration supports AUTO and MANUAL controls.
 
-RiceEWS (Rice Price Early Warning System) is a research software
-package for detecting causal price relationships across rice markets.
-It implements the pairwise Granger causality framework described in:
+Examples:
+- Module 2 lag selection
+    M2_LAG_SELECTION_MODE = "AUTO" | "MANUAL"
+- Module 2 significance control
+    M2_SIGNIFICANCE_MODE = "AUTO" | "MANUAL"
+- Benjamini–Hochberg correction
+    M2_APPLY_BH_CORRECTION = True | False
+- Module 1 differencing control
+    M1_DIFFERENCING_MODE = "AUTO" | "MANUAL"
+- Duplicate handling
+    M1_DUPLICATE_STRATEGY = keep_first | keep_last | error
 
-    Kinnear & Mazumdar (2023)
-    "Unconditional pairwise Granger tests for identifying market
-     leaders in agricultural commodity networks"
 
-The pipeline consists of three scientific modules:
-
-  Module 1 — Data Preprocessing
-    Loads raw rice price data, cleans outliers, applies log
-    transformation, first-order differencing, and stationarity testing.
-
-  Module 2 — Pairwise Granger Analysis
-    Performs all pairwise unconditional Granger causality tests across
-    (market, grade) node pairs.  Applies Benjamini-Hochberg FDR
-    correction as prescribed by Kinnear & Mazumdar (2023).
-
-  Module 3 — Network Recovery
-    Recovers the directed acyclic graph (DAG) of causal relationships
-    using Algorithm 1 from Kinnear & Mazumdar (2023) and identifies
-    market leaders by out-degree ranking.
-
+3) PREPROCESSING WORKFLOW (MODULE 1)
 ------------------------------------------------------------
-2. SYSTEM REQUIREMENTS
+Assumption-driven sequence:
+
+Raw prices
+  -> Optional missing-value handling
+  -> Optional log transform
+  -> Stationarity test
+  -> If non-stationary: difference and retest (configurable max order)
+  -> Optional standardization
+
+Key options:
+- M1_MISSING_VALUE_MODE (default: disabled)
+- M1_LOG_TRANSFORM
+- M1_STATIONARITY_TEST (ADF | KPSS | ADF_KPSS)
+- M1_MAX_DIFFERENCING_ORDER
+- M1_REQUIRE_STATIONARITY
+- M1_OUTLIER_MODE
+- M1_STANDARDIZATION_ENABLED
+
+Module 1 no longer blindly differences all series.
+
+
+4) OUTPUT REPRODUCIBILITY / OVERWRITE POLICY
 ------------------------------------------------------------
+Default behavior is fresh execution and deterministic regeneration.
 
-  Python       : 3.9 or later
-  pandas       : any recent version
-  numpy        : any recent version
-  scipy        : any recent version
-  statsmodels  : any recent version
-  networkx     : any recent version
-  openpyxl     : any recent version
-  plotly       : any recent version (optional, for HTML visualizations)
+- Existing outputs are NOT treated as completion proof.
+- Module runs regenerate and overwrite same filenames.
+- No versioned output filenames are created.
+- A module only overwrites files in its own output folder.
 
+Defaults:
+- OVERWRITE_OUTPUTS = True
+- SKIP_EXISTING_OUTPUTS = False
+
+Optional skip behavior is available only when explicitly enabled.
+
+
+5) CLI FILTERS
 ------------------------------------------------------------
-3. INSTALLATION
+Available for:
+- run_pipeline.py
+- run_module1.py
+- run_module2.py
+- run_module3.py
+
+Options:
+- --grade
+    single, repeated, or comma-separated
+- --market
+    single (101), range (101-120), comma-separated (101,103,108)
+- --date-range
+    YYYY-MM-DD:YYYY-MM-DD
+
+CLI defaults are in src/config.py:
+- DEFAULT_GRADES
+- DEFAULT_MARKETS
+- DEFAULT_DATE_RANGE
+- ALLOW_MARKET_FILTER
+- ALLOW_GRADE_FILTER
+- ALLOW_DATE_FILTER
+
+Filtering is applied before downstream processing.
+
+
+6) CLI EXAMPLES
 ------------------------------------------------------------
-
-Step 1 — Clone or download the repository:
-
-    git clone https://github.com/farismakarim-work/RiceEWS.git
-    cd RiceEWS
-
-Step 2 — Install Python dependencies:
-
-    pip install -r requirements.txt
-
-Step 3 — Verify installation:
-
-    python run_pipeline.py --help
-
-------------------------------------------------------------
-4. REPOSITORY LAYOUT
-------------------------------------------------------------
-
-  RiceEWS/
-  ├── run_all.py              Standard entry point — runs full pipeline
-  ├── run_module1.py          Runs Module 1 only
-  ├── run_module2.py          Runs Module 2 only
-  ├── run_module3.py          Runs Module 3 only
-  ├── run_pipeline.py         Central execution engine (all logic here)
-  ├── Pipeline_User_Guide.txt This document
-  ├── requirements.txt        Python dependencies
-  ├── data/
-  │   ├── raw/                Place your raw Excel datasets here
-  │   └── processed/
-  │       ├── module_01/      Module 1 outputs
-  │       ├── module_02/      Module 2 outputs
-  │       └── module_03/      Module 3 outputs
-  └── src/
-      ├── config.py           Project configuration and constants
-      ├── utils/
-      │   └── console.py      Shared terminal formatting utility
-      └── modules/
-          ├── preprocessing/      Module 1 scientific implementation
-          ├── causality_testing/  Module 2 scientific implementation
-          └── module_03_network_inference/  Module 3 scientific implementation
-
-------------------------------------------------------------
-5. QUICK START
-------------------------------------------------------------
-
-The fastest way to run the complete analysis:
-
-    python run_all.py
-
-This command:
-  - Auto-discovers all *.xlsx datasets in data/raw/
-  - Runs Module 1, then Module 2, then Module 3
-  - Saves all outputs under data/processed/
-  - Prints a progress summary to the terminal
-
-------------------------------------------------------------
-6. RUNNING THE FULL PIPELINE
-------------------------------------------------------------
-
-Standard usage (default configuration):
-
-    python run_all.py
-
-Equivalent command via the central engine:
-
+Run all modules:
     python run_pipeline.py --all
 
-With custom input/output directories:
+Run full pipeline with subset:
+    python run_pipeline.py --all --grade low1 --market 101-120
 
-    python run_pipeline.py --all --input /path/to/raw --output /path/to/processed
+Run Module 1 for specific date window:
+    python run_pipeline.py --module 1 --date-range 2021-01-01:2023-12-31
 
-With verbose output:
+Run Module 2 for selected markets and grades:
+    python run_pipeline.py --module 2 --market 101,103,108 --grade low1,med1
 
-    python run_pipeline.py --all --verbose
+Run Module 3 with market/grade subset:
+    python run_pipeline.py --module 3 --market 101-106 --grade low1
 
-With debug logging:
 
-    python run_pipeline.py --all --debug
-
-Force re-processing even if outputs already exist:
-
-    python run_pipeline.py --all --force
-
-Handle duplicate rows in raw data:
-
-    python run_pipeline.py --all --duplicate-strategy keep_last
-
-Expected terminal output:
-
-    ============================================================
-      RiceEWS
-      Rice Price Early Warning System
-      Version : 1.0.0
-    ============================================================
-
-      Initializing RiceEWS...
-      Raw data directory  : data/raw
-      Output directory    : data/processed
-      Duplicate strategy  : error
-      Loading datasets...
-      Discovered 1 input dataset(s).
-        Dataset: Pilot Dataset.xlsx
-      Validating dataset schema...
-
-      --------------------------------------------------------------
-        Running Module 1: Data Preprocessing
-      --------------------------------------------------------------
-      ...
-      [OK]  Module 1 output saved to: data/processed/module_01/preprocessed_pilot_data.csv
-
-      --------------------------------------------------------------
-        Running Module 2: Pairwise Granger Analysis
-      --------------------------------------------------------------
-      ...
-      [OK]  Module 2 output saved to: data/processed/module_02
-
-      --------------------------------------------------------------
-        Running Module 3: Network Recovery
-      --------------------------------------------------------------
-        Recovering directed acyclic graph...
-        Generating market leader summary...
-      ...
-      [OK]  Module 3 output saved to: data/processed/module_03
-
-      [OK]  Pipeline completed successfully.
-        Execution finished in 00:03:17.
-
+7) MODULE EXECUTION ORDER
 ------------------------------------------------------------
-7. RUNNING INDIVIDUAL MODULES
-------------------------------------------------------------
+Normal order:
+1. Module 1 preprocessing
+2. Module 2 pairwise Granger
+3. Module 3 network recovery
+
+Scientific core remains unchanged:
+- Pairwise Granger methodology
+- Algorithm 1 recovery logic
+- Network inference/statistical implementation
 
-Module 1 — Data Preprocessing:
-
-    python run_module1.py
-
-  No prerequisites required.
-  Input  : data/raw/*.xlsx
-  Output : data/processed/module_01/preprocessed_pilot_data.csv
-
-Module 2 — Pairwise Granger Analysis:
-
-    python run_module2.py
-
-  Prerequisite: Module 1 must have been run first.
-  Input  : data/processed/module_01/preprocessed_pilot_data.csv
-  Output : data/processed/module_02/
-
-  If Module 1 outputs are missing, you will see:
-
-    [ERROR]  Module 2 prerequisite not satisfied.
-    [ERROR]  Required file not found: data/processed/module_01/preprocessed_pilot_data.csv
-    [ERROR]  Please run Module 1 first before executing Module 2.
-
-Module 3 — Network Recovery:
-
-    python run_module3.py
-
-  Prerequisite: Module 2 must have been run first.
-  Input  : data/processed/module_02/granger_results.json
-  Output : data/processed/module_03/
-
-  If Module 2 outputs are missing, you will see:
-
-    [ERROR]  Module 3 prerequisite not satisfied.
-    [ERROR]  Required file not found: data/processed/module_02/granger_results.json
-    [ERROR]  Please run Module 2 first before executing Module 3.
-
-Any CLI flags supported by run_pipeline.py can be passed through:
-
-    python run_module1.py --force
-    python run_module2.py --verbose
-    python run_module3.py --debug
-
-------------------------------------------------------------
-8. COMMAND-LINE REFERENCE (run_pipeline.py)
-------------------------------------------------------------
-
-SYNOPSIS
-
-    python run_pipeline.py (--all | --module {1,2,3}) [OPTIONS]
-
-REQUIRED ARGUMENT (one of):
-
-  --all
-        Execute the complete pipeline:
-        Module 1 → Module 2 → Module 3.
-
-  --module {1,2,3}
-        Execute a single module only.
-
-OPTIONS:
-
-  --input PATH
-        Path to the raw input directory.
-        Default: data/raw
-        All *.xlsx files in this directory are discovered automatically.
-
-  --output PATH
-        Base path for processed outputs.
-        Default: data/processed
-        Module-specific sub-directories are created automatically.
-
-  --force
-        Re-run a module even if its output already exists.
-        Without this flag, modules whose outputs are present are skipped.
-
-  --duplicate-strategy {keep_first,keep_last,error}
-        Strategy when duplicate (date, market_id, grade) rows are found.
-        keep_first : retain the first occurrence and discard the rest.
-        keep_last  : retain the last occurrence and discard the rest.
-        error      : raise an error and abort (default).
-
-  --verbose
-        Enable verbose output from scientific modules.
-
-  --debug
-        Enable DEBUG-level logging (implies --verbose).
-        Includes full Python tracebacks on error.
-
-  --help
-        Print this help and exit.
-
-EXAMPLES:
-
-    python run_pipeline.py --all
-    python run_pipeline.py --module 1
-    python run_pipeline.py --module 2 --force
-    python run_pipeline.py --all --duplicate-strategy keep_last
-    python run_pipeline.py --all --input /data/rice/raw --output /data/rice/results
-    python run_pipeline.py --all --verbose --debug
-
-------------------------------------------------------------
-9. INPUT DATA FORMAT
-------------------------------------------------------------
-
-Place one or more Excel files (.xlsx) in the data/raw/ directory.
-All files are concatenated automatically before preprocessing.
-
-Required columns (case-insensitive):
-
-  Date        — Transaction date (datetime or date string)
-  Market_id   — Market identifier (integer, e.g. 101–106)
-  Grade       — Rice grade (string, e.g. low1, low2, med1, med2)
-  Price       — Rice price (numeric)
-
-Optional columns:
-
-  Volume      — Trade volume (retained but not used in causality analysis)
-
-Example rows:
-
-  Date        Market_id  Grade  Price
-  2024-01-01  101        low1   8500
-  2024-01-01  101        low2   9000
-  2024-01-01  102        low1   8450
-  ...
-
-------------------------------------------------------------
-10. OUTPUT FILES
-------------------------------------------------------------
-
-Module 1 outputs — data/processed/module_01/
-  preprocessed_pilot_data.csv       — Clean, differenced, standardized data
-  preprocessed_pilot_data_report.json — Preprocessing summary statistics
-
-Module 2 outputs — data/processed/module_02/
-  granger_results.json              — All pairwise test results (JSON)
-  granger_pairwise.csv              — Test results in tabular form
-  granger_results.xlsx              — Test results as Excel workbook
-  granger_results.md                — Markdown summary table
-  granger_matrices.npz              — Causal matrices in NumPy format
-  network_graph_integrated.html     — Interactive network visualization
-  heatmap_integrated.html           — Causal heat-map visualization
-  ranking_integrated.html           — Market leader ranking chart
-
-Module 3 outputs — data/processed/module_03/
-  network_inference_results.json    — Full Algorithm 1 results (JSON)
-  network_edges.csv                 — Recovered DAG edges
-  network_summary.csv               — Per-grade graph statistics
-  network_summary.md                — Markdown summary report
-  market_leaders_integrated.csv     — Integrated leader rankings
-  market_leaders_<grade>.csv        — Per-grade leader rankings
-  network_graph_integrated.html     — Interactive integrated network
-  network_graph_<grade>.html        — Per-grade network visualization
-
-------------------------------------------------------------
-11. CONFIGURATION OPTIONS
-------------------------------------------------------------
-
-The pipeline uses sensible defaults aligned with Kinnear & Mazumdar (2023).
-Advanced users may adjust these by modifying the config dictionaries inside
-run_pipeline.py (_run_module1, _run_module2, _run_module3).
-
-Module 1 configuration keys:
-  missing_method       interpolate | ffill | bfill (default: interpolate)
-  outlier_method       iqr | zscore (default: iqr)
-  outlier_threshold    float (default: 1.5)
-  log_transform        bool (default: True)
-  detrend_method       none | linear | polynomial (default: none)
-  differencing_order   int (default: 1)
-  standardize_method   zscore | minmax (default: zscore)
-  stationarity_test    adf | kpss (default: adf)
-  duplicate_strategy   keep_first | keep_last | error (default: error)
-
-Module 2 configuration keys:
-  lag_order            int (default: 4)
-  price_col            column name (default: price_diff)
-  significance_level   float (default: 0.05)
-  auto_lag             bool — use BIC to select optimal lag (default: False)
-  max_lag              int — upper bound for auto_lag (default: 8)
-  lag_criterion        bic | aic (default: bic)
-  apply_fdr            bool — Benjamini-Hochberg correction (default: True)
-
-Module 3 configuration keys:
-  enforce_dag          bool — retained for API compatibility (default: True)
-
-------------------------------------------------------------
-12. TROUBLESHOOTING
-------------------------------------------------------------
-
-Problem : No Excel datasets found in data/raw
-Solution: Ensure your *.xlsx files are placed in the data/raw/ directory,
-          or use --input to specify a different directory.
-
-Problem : Module 2 prerequisite not satisfied
-Solution: Run Module 1 first:  python run_module1.py
-          Or run the full pipeline:  python run_all.py
-
-Problem : Module 3 prerequisite not satisfied
-Solution: Run Module 2 first:  python run_module2.py
-          Or run the full pipeline:  python run_all.py
-
-Problem : Duplicate rows error
-Solution: If your raw data contains duplicate (date, market_id, grade)
-          combinations, use --duplicate-strategy keep_first or keep_last.
-
-Problem : Module X output exists but appears stale
-Solution: Use --force to overwrite existing outputs and re-run from scratch.
-
-Problem : Unexpected import errors
-Solution: Ensure all dependencies are installed:
-          pip install -r requirements.txt
-
-Problem : Algorithm 1 raises a cycle error
-Solution: This indicates the Granger test results contain a directed cycle
-          in the ancestor set W.  The system attempts to prune cyclic edges
-          automatically before running Algorithm 1.  If the error persists,
-          inspect data/processed/module_02/granger_results.json for unusual
-          bidirectional relationships and consider adjusting lag_order.
-
-------------------------------------------------------------
-13. SCIENTIFIC BACKGROUND
-------------------------------------------------------------
-
-RiceEWS implements the methodology from:
-
-  Kinnear, B., & Mazumdar, S. (2023).
-  "Unconditional pairwise Granger tests for identifying market leaders
-   in agricultural commodity price networks."
-  Reference: kinnear_mazumdar.pdf (included in repository root)
-
-Key algorithmic steps:
-
-  1. Stationarity — First-order differencing achieves I(0) series
-     required for valid Granger tests.
-
-  2. Pairwise Granger tests — For each ordered pair (X → Y) of
-     (market, grade) nodes, an F-test for Granger causality is performed
-     using the specified lag order.
-
-  3. FDR correction — Benjamini-Hochberg procedure controls the False
-     Discovery Rate across all N*(N-1) pairwise tests per the paper's
-     Section 3 recommendation.
-
-  4. Ancestor set W — Pairs where X Granger-causes Y but not vice versa
-     form the ancestor partial order W used by Algorithm 1.
-
-  5. Algorithm 1 (Kinnear & Mazumdar 2023) — Recovers the minimal DAG
-     consistent with W by removing transitive ancestor edges that are
-     explained by shorter directed paths.
-
-  6. Market leaders — Nodes with the highest out-degree in the recovered
-     DAG are identified as market leaders (price setters).
-
-============================================================
-  End of RiceEWS Pipeline User Guide
 ============================================================

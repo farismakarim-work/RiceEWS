@@ -139,3 +139,33 @@ def test_module3_parses_legacy_string_booleans_and_recovers_cross_grade_edges(tm
     assert ("M101_low1", "M103_low1") not in edge_pairs
     assert ("M101_low1", "M101_med1") in edge_pairs
     assert ((edges_df["grade_source"] != edges_df["grade_target"]).any())
+
+
+def test_module3_supports_market_grade_filters(tmp_path):
+    module2_json = tmp_path / "module_02" / "granger_results.json"
+    module2_json.parent.mkdir(parents=True)
+
+    synthetic_results = {
+        "analysis_type": "integrated",
+        "nodes": [
+            {"node_id": "M101_low1", "market_id": 101, "grade": "low1"},
+            {"node_id": "M102_low1", "market_id": 102, "grade": "low1"},
+            {"node_id": "M101_med1", "market_id": 101, "grade": "med1"},
+        ],
+        "pairwise_tests": {
+            "M101_low1→M102_low1": {"granger_causes": True, "f_statistic": 4.0, "p_value": 0.01, "p_value_bh": 0.01, "lag_order": 1},
+            "M101_low1→M101_med1": {"granger_causes": True, "f_statistic": 4.0, "p_value": 0.01, "p_value_bh": 0.01, "lag_order": 1},
+        },
+    }
+    module2_json.write_text(json.dumps(synthetic_results), encoding="utf-8")
+
+    output_dir = tmp_path / "module_03"
+    result = run_module3_network_inference(
+        str(module2_json),
+        str(output_dir),
+        markets=[101],
+        grades=["low1"],
+    )
+
+    kept_nodes = {node["node_id"] for node in result["nodes"]}
+    assert kept_nodes == {"M101_low1"}
