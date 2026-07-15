@@ -11,7 +11,9 @@ import textwrap
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional, Set, Tuple
+
+import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parent
 SRC_DIR = REPO_ROOT / "src"
@@ -156,7 +158,7 @@ def _parse_market_filter(raw_value: Optional[str]) -> Optional[List[int]]:
     if isinstance(value, list):
         return sorted({int(v) for v in value})
 
-    markets: set[int] = set()
+    markets: Set[int] = set()
     for chunk in str(value).split(","):
         token = chunk.strip()
         if not token:
@@ -166,7 +168,7 @@ def _parse_market_filter(raw_value: Optional[str]) -> Optional[List[int]]:
             start = int(start_str)
             end = int(end_str)
             if start > end:
-                raise ValueError(f"Invalid market range: {token}")
+                raise ValueError(f"market range start must be <= end: {token}")
             for market in range(start, end + 1):
                 markets.add(market)
         else:
@@ -175,7 +177,7 @@ def _parse_market_filter(raw_value: Optional[str]) -> Optional[List[int]]:
     return sorted(markets) if markets else None
 
 
-def _parse_date_range(raw_value: Optional[str]) -> Optional[Tuple[Optional[datetime], Optional[datetime]]]:
+def _parse_date_range(raw_value: Optional[str]) -> Optional[Tuple[Optional[pd.Timestamp], Optional[pd.Timestamp]]]:
     value = raw_value if raw_value is not None else DEFAULT_DATE_RANGE
     if not value:
         return None
@@ -184,8 +186,8 @@ def _parse_date_range(raw_value: Optional[str]) -> Optional[Tuple[Optional[datet
         raise ValueError("--date-range must use format YYYY-MM-DD:YYYY-MM-DD")
 
     start_raw, end_raw = str(value).split(":", 1)
-    start = datetime.strptime(start_raw, "%Y-%m-%d") if start_raw else None
-    end = datetime.strptime(end_raw, "%Y-%m-%d") if end_raw else None
+    start = pd.Timestamp(datetime.strptime(start_raw, "%Y-%m-%d")) if start_raw else None
+    end = pd.Timestamp(datetime.strptime(end_raw, "%Y-%m-%d")) if end_raw else None
     if start and end and start > end:
         raise ValueError("date-range start must be <= end")
     return start, end

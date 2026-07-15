@@ -417,7 +417,7 @@ def run_module3_network_inference(
     if not node_records:
         raise ValueError("No nodes remain for Module 3 after applying filters.")
     node_labels = [record["node_id"] for record in node_records]
-    grades = sorted({record["grade"] for record in node_records})
+    node_grades = sorted({record["grade"] for record in node_records})
     pairwise_tests = data.get("pairwise_tests", {})
 
     W, excluded_bidirectional, metadata_lookup = _build_ancestor_set_W(pairwise_tests)
@@ -437,7 +437,7 @@ def run_module3_network_inference(
     integrated_viz = _save_html_visualization("network_graph_integrated", node_labels, edge_df, out_dir)
     visualization_paths["integrated"] = str(integrated_viz)
 
-    for grade in grades:
+    for grade in node_grades:
         grade_nodes = [record["node_id"] for record in node_records if record["grade"] == grade]
         grade_metrics = metrics[metrics["grade"] == grade].reset_index(drop=True)
         leaders_per_grade[grade] = grade_metrics.to_dict(orient="records")

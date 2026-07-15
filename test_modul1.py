@@ -1,6 +1,5 @@
 import sys
 import subprocess
-import time
 from pathlib import Path
 
 import pandas as pd
@@ -161,13 +160,14 @@ def test_run_pipeline_module1_reruns_and_overwrites_by_default(tmp_path):
 
     output_file = output_dir / "module_01" / "preprocessed_pilot_data.csv"
     assert output_file.exists()
-    first_mtime = output_file.stat().st_mtime
-
-    time.sleep(1.1)
+    first_mtime = output_file.stat().st_mtime_ns
+    first_df = pd.read_csv(output_file)
 
     second = subprocess.run(command, cwd=REPO_ROOT, check=False, capture_output=True, text=True)
     assert second.returncode == 0, second.stderr
-    second_mtime = output_file.stat().st_mtime
+    second_mtime = output_file.stat().st_mtime_ns
+    second_df = pd.read_csv(output_file)
 
     assert second_mtime > first_mtime
+    assert len(second_df) == len(first_df)
     assert "Skipping" not in second.stdout

@@ -12,6 +12,7 @@ from pathlib import Path
 # Project
 # =============================================================================
 
+# config.py is located at <repo>/src/config.py, so parent.parent resolves to <repo>.
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SRC_DIR = PROJECT_ROOT / "src"
 DATA_DIR = PROJECT_ROOT / "data"
@@ -88,6 +89,7 @@ M1_MISSING_VALUE_MODE = "disabled"
 M1_MISSING_VALUE_OPTIONS = (
     "disabled",
     "drop",
+    "interpolate",
     "forward_fill",
     "backward_fill",
     "linear_interpolation",
@@ -108,7 +110,7 @@ M1_DETREND_METHOD_OPTIONS = ("none", "linear", "polynomial")
 M1_STATIONARITY_TEST = "ADF"
 M1_STATIONARITY_TEST_OPTIONS = ("ADF", "KPSS", "ADF_KPSS")
 M1_STATIONARITY_SIGNIFICANCE_LEVEL = 0.05
-M1_REQUIRE_STATIONARITY = True
+M1_REQUIRE_STATIONARITY = False
 M1_MAX_DIFFERENCING_ORDER = 1
 M1_DIFFERENCING_MODE = "AUTO"  # AUTO or MANUAL
 M1_DIFFERENCING_MODE_OPTIONS = ("AUTO", "MANUAL")

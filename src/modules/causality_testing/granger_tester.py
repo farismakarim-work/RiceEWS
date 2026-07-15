@@ -31,6 +31,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
+from datetime import date, datetime
 import logging
 import json
 import warnings
@@ -148,6 +149,8 @@ def _to_json_compatible(value):
         return int(value)
     if isinstance(value, np.floating):
         return float(value)
+    if isinstance(value, (datetime, date, pd.Timestamp)):
+        return value.isoformat()
     return value
 
 
@@ -457,7 +460,7 @@ class GrangerCausalityTester:
                                         grade: str,
                                         lag_order: int = M2_LAG_ORDER,
                                         price_col: str = M2_PRICE_COL,
-                                        auto_lag: bool = (M2_LAG_SELECTION_MODE.upper() == 'AUTO'),
+                                        auto_lag: bool = False,
                                         max_lag: int = M2_MAX_LAG,
                                         lag_criterion: str = M2_LAG_CRITERION,
                                         significance_level: float = M2_SIGNIFICANCE_LEVEL,

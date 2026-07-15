@@ -290,6 +290,12 @@ class DataPreprocessor:
         if method == 'disabled':
             if self.verbose:
                 print("Missing value handling is disabled by configuration")
+            self.processing_report['missing_values'] = {
+                'before': int(missing_before),
+                'after': int(missing_before),
+                'method': method
+            }
+            return df
         elif method == 'drop':
             df = df.dropna(subset=[price_col])
 
@@ -311,8 +317,8 @@ class DataPreprocessor:
                     if mask.any():
                         df.loc[mask, price_col] = (
                             df.loc[mask, price_col]
-                            .fillna(method='ffill')
-                            .fillna(method='bfill')
+                            .ffill()
+                            .bfill()
                         )
         elif method == 'backward_fill':
             for market in df[market_col].unique():
@@ -321,8 +327,8 @@ class DataPreprocessor:
                     if mask.any():
                         df.loc[mask, price_col] = (
                             df.loc[mask, price_col]
-                            .fillna(method='bfill')
-                            .fillna(method='ffill')
+                            .bfill()
+                            .ffill()
                         )
 
         elif method == 'mean':
@@ -753,6 +759,8 @@ class DataPreprocessor:
         """Filter loaded data before downstream preprocessing."""
         filtered = df.copy()
         initial_count = len(filtered)
+        start_date = pd.Timestamp(date_range[0]) if date_range and date_range[0] is not None else None
+        end_date = pd.Timestamp(date_range[1]) if date_range and date_range[1] is not None else None
 
         if markets:
             market_set = {int(market) for market in markets}
@@ -760,20 +768,18 @@ class DataPreprocessor:
         if grades:
             grade_set = {str(grade) for grade in grades}
             filtered = filtered[filtered['grade'].isin(grade_set)]
-        if date_range:
-            start_date, end_date = date_range
-            if start_date is not None:
-                filtered = filtered[filtered['date'] >= start_date]
-            if end_date is not None:
-                filtered = filtered[filtered['date'] <= end_date]
+        if start_date is not None:
+            filtered = filtered[filtered['date'] >= start_date]
+        if end_date is not None:
+            filtered = filtered[filtered['date'] <= end_date]
 
         filtered = filtered.sort_values(['date', 'market_id', 'grade']).reset_index(drop=True)
         self.processing_report['filters'] = {
             'markets': markets or 'all',
             'grades': grades or 'all',
             'date_range': (
-                str(date_range[0].date()) if date_range and date_range[0] is not None else None,
-                str(date_range[1].date()) if date_range and date_range[1] is not None else None,
+                str(start_date.date()) if start_date is not None else None,
+                str(end_date.date()) if end_date is not None else None,
             ),
             'records_before': int(initial_count),
             'records_after': int(len(filtered)),
@@ -1009,8 +1015,18 @@ def _apply_stationarity_driven_differencing(
             order_used = 0
 
             def _record_state(series_values: np.ndarray, current_order: int) -> Dict:
+                cleaned_values = series_values[~np.isnan(series_values)]
+                if cleaned_values.size == 0:
+                    result = {
+                        'stationary': False,
+                        'reason': 'insufficient_data',
+                        'test': str(stationarity_test).upper(),
+                    }
+                    result['differencing_order'] = int(current_order)
+                    test_history.append(result)
+                    return result
                 result = preprocessor._evaluate_stationarity_series(
-                    series_values[~np.isnan(series_values)],
+                    cleaned_values,
                     test=stationarity_test,
                     significance_level=stationarity_alpha,
                 )
@@ -1027,7 +1043,7 @@ def _apply_stationarity_driven_differencing(
                     final_series = np.concatenate([np.full(order_used, np.nan), differenced])
                 _record_state(final_series, order_used)
             else:
-                result = _record_state(final_series, order_used)
+                result: Dict = _record_state(final_series, order_used)
                 while (
                     not result.get('stationary', False)
                     and order_used < int(max_differencing_order)
@@ -1040,16 +1056,26 @@ def _apply_stationarity_driven_differencing(
                 if require_stationarity and not result.get('stationary', False):
                     raise ValueError(
                         f"Series {key} remains non-stationary at differencing order {order_used} "
-                        f"(max allowed: {max_differencing_order})."
+                        f"(max allowed: {max_differencing_order}). "
+                        "Increase M1_MAX_DIFFERENCING_ORDER or set M1_REQUIRE_STATIONARITY=False "
+                        "if you want to continue with partially non-stationary series."
                     )
 
-            transformed.loc[mask, M1_MODULE2_PRICE_COLUMN] = final_series[:mask.sum()]
+            expected_length = int(mask.sum())
+            if len(final_series) != expected_length:
+                if len(final_series) < expected_length:
+                    final_series = np.concatenate(
+                        [final_series, np.full(expected_length - len(final_series), np.nan)]
+                    )
+                else:
+                    final_series = final_series[:expected_length]
+            transformed.loc[mask, M1_MODULE2_PRICE_COLUMN] = final_series
             transformed.loc[mask, 'differencing_order_used'] = int(order_used)
             stationarity_report[key] = {
                 'market_id': int(market),
                 'grade': str(grade),
                 'differencing_order_used': int(order_used),
-                'final_stationary': bool(test_history[-1].get('stationary', False)) if test_history else False,
+                'final_stationary': test_history[-1].get('stationary', False) if test_history else False,
                 'history': test_history,
             }
 
