@@ -225,7 +225,7 @@ def test_module1_stationarity_status_pass_and_fail(monkeypatch):
     assert fail_result["adf_p_value"] == pytest.approx(0.2)
 
 
-def test_module1_generates_stationarity_report_and_excludes_not_testable_series(tmp_path, monkeypatch):
+def test_module1_stationarity_report_excludes_not_testable(tmp_path, monkeypatch):
     dates = pd.date_range("2024-01-01", periods=12, freq="D")
     rows = []
 

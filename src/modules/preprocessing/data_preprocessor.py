@@ -882,7 +882,7 @@ class DataPreprocessor:
             outcome['status'] = STATUS_NOT_TESTABLE
             outcome['stationary'] = False
             outcome['eligible_for_pwgc'] = False
-            outcome['reason'] = f"{test_name} could not be estimated: {exc}"
+            outcome['reason'] = f"{test_name} could not be estimated: {type(exc).__name__}: {exc}"
             outcome['significance_level'] = float(significance_level)
             return outcome
 
@@ -1047,6 +1047,8 @@ class DataPreprocessor:
 
 
 def _format_summary_table(rows: List[Tuple[str, Union[int, str]]]) -> str:
+    if not rows:
+        return "+----------------------+-------+\n| No data available    |     0 |\n+----------------------+-------+"
     label_width = max(len(label) for label, _ in rows)
     value_width = max(len(str(value)) for _, value in rows)
     border = f"+-{'-' * label_width}-+-{'-' * value_width}-+"
@@ -1126,7 +1128,7 @@ def _filter_pwgc_eligible_data(
 ) -> pd.DataFrame:
     eligible_pairs = stationarity_report_df[stationarity_report_df['Eligible for PWGC'] == 'YES'][['Market', 'Grade']]
     if eligible_pairs.empty:
-        return df.iloc[0:0].copy()
+        return df.head(0).copy()
     eligible_pairs = eligible_pairs.rename(columns={'Market': market_col, 'Grade': grade_col})
     eligible_pairs[market_col] = eligible_pairs[market_col].astype(int)
     eligible_pairs[grade_col] = eligible_pairs[grade_col].astype(str)
